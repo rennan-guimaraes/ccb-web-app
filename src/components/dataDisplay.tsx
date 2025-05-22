@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+
 import {
   BarChart3,
   Home,
@@ -28,6 +29,8 @@ import {
 } from "lucide-react";
 import ChartDisplay from "./chartDisplay";
 import DocumentosFaltantesAnalysis from "./documentosFaltantesAnalysis";
+import AddCasaModal from "./addCasaModal";
+import BuscarImovelFaltante from "./buscarImovelFaltante";
 
 interface DataDisplayProps {
   refreshTrigger?: number;
@@ -85,6 +88,10 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
         alert(`Erro: ${result.message}`);
       }
     }
+  };
+
+  const handleCasaAdded = (novaCasa: CasaOracao) => {
+    setCasas((prev) => [...prev, novaCasa]);
   };
 
   useEffect(() => {
@@ -175,17 +182,25 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
           <TabsContent value="casas" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Casas de Oração</h3>
-              {casas.length > 0 && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => clearData("casas")}
-                  className="gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Limpar Dados
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <AddCasaModal onCasaAdded={handleCasaAdded} />
+                <BuscarImovelFaltante
+                  gestaoData={gestaoData}
+                  casasData={casas}
+                  onCasaAdded={handleCasaAdded}
+                />
+                {casas.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => clearData("casas")}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Limpar Dados
+                  </Button>
+                )}
+              </div>
             </div>
 
             {casas.length === 0 ? (
