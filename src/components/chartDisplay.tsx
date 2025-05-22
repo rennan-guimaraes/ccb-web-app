@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { GestaoData } from "../types/casaOracao";
+import { GestaoData, CasaOracao } from "../types/casaOracao";
 import { isDocumentoObrigatorio } from "../utils/constants";
 import { DocumentosFaltantesService } from "../services/documentosFaltantesService";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import html2canvas from "html2canvas";
 
 interface ChartDisplayProps {
   gestaoData: GestaoData[];
+  casasData: CasaOracao[];
   totalCasas: number;
   useExemptions?: boolean; // New prop to enable exemptions
 }
@@ -51,6 +52,7 @@ interface ChartDataItem {
 
 export default function ChartDisplay({
   gestaoData,
+  casasData,
   totalCasas,
   useExemptions = false,
 }: ChartDisplayProps) {
@@ -81,6 +83,7 @@ export default function ChartDisplay({
       // Use data with exemptions
       const dataWithExemptions = documentosService.getChartDataWithExemptions(
         gestaoData,
+        casasData,
         totalCasas
       );
 

@@ -144,11 +144,47 @@ export class DocumentosFaltantesService {
             (d) => d.codigo === casa.codigo && d.documento === documento
           );
 
+          // Verificação especial para documentos que só são obrigatórios para imóveis próprios
+          const docNormalizado = documento.toLowerCase();
+          const isDocumentoApenasProprio =
+            docNormalizado.includes("averbacao") ||
+            docNormalizado.includes("averbação") ||
+            docNormalizado.includes("escritura") ||
+            (docNormalizado.includes("compra") &&
+              docNormalizado.includes("venda"));
+
+          let observacaoAuto = faltanteInfo?.observacao;
+          let desconsiderarAuto = faltanteInfo?.desconsiderar || false;
+
+          if (isDocumentoApenasProprio && casaInfo?.tipo_imovel) {
+            // Esses documentos só são obrigatórios para imóveis próprios (IP - ...)
+            const isImovelProprio = casaInfo.tipo_imovel
+              .toUpperCase()
+              .startsWith("IP");
+
+            if (!isImovelProprio) {
+              // Automaticamente marca como desconsiderado com observação
+              observacaoAuto =
+                observacaoAuto || "Não é imóvel próprio, logo não precisa";
+              desconsiderarAuto = true;
+
+              // Salva automaticamente no localStorage se ainda não existe
+              if (!faltanteInfo) {
+                this.updateDocumentoFaltante(
+                  casa.codigo,
+                  documento,
+                  observacaoAuto,
+                  desconsiderarAuto
+                );
+              }
+            }
+          }
+
           casasSemDocumento.push({
             codigo: casa.codigo,
             nome: casaInfo?.nome || casa.codigo,
-            observacao: faltanteInfo?.observacao,
-            desconsiderar: faltanteInfo?.desconsiderar || false,
+            observacao: observacaoAuto,
+            desconsiderar: desconsiderarAuto,
           });
         }
       });
@@ -193,6 +229,7 @@ export class DocumentosFaltantesService {
    */
   getChartDataWithExemptions(
     gestaoData: GestaoData[],
+    casasData: CasaOracao[],
     totalCasas: number
   ): Array<{
     name: string;
@@ -211,10 +248,13 @@ export class DocumentosFaltantesService {
     return tiposDocumentos
       .map((documento) => {
         // Count original occurrences
-        const originalValue = gestaoData.filter((casa) => {
+        let originalValue = gestaoData.filter((casa) => {
           const valor = casa[documento];
           return valor && valor.toString().toUpperCase().trim() === "X";
         }).length;
+
+        // Não precisa de lógica especial aqui, pois as exceções são tratadas
+        // automaticamente pelo sistema de desconsideração
 
         // Count exemptions for this document
         const exemptions = documentosFaltantes.filter(

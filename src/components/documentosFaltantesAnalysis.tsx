@@ -33,6 +33,7 @@ import {
   Search,
   Save,
   FileX,
+  Home,
 } from "lucide-react";
 
 interface DocumentosFaltantesAnalysisProps {
@@ -129,6 +130,16 @@ export default function DocumentosFaltantesAnalysis({
     return "Pendente";
   };
 
+  const isDocumentoApenasProprio = (nomeDocumento: string) => {
+    const docNormalizado = nomeDocumento.toLowerCase();
+    return (
+      docNormalizado.includes("averbacao") ||
+      docNormalizado.includes("averbação") ||
+      docNormalizado.includes("escritura") ||
+      (docNormalizado.includes("compra") && docNormalizado.includes("venda"))
+    );
+  };
+
   if (
     !gestaoData ||
     gestaoData.length === 0 ||
@@ -164,7 +175,8 @@ export default function DocumentosFaltantesAnalysis({
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Gerencie observações e exceções para documentos em falta nas casas
-            de oração.
+            de oração. Documentos marcados como "Apenas IP" são obrigatórios
+            apenas para imóveis próprios.
           </p>
         </CardHeader>
         <CardContent>
@@ -268,6 +280,15 @@ export default function DocumentosFaltantesAnalysis({
                         <Badge variant="secondary" className="gap-1">
                           <FileText className="h-3 w-3" />
                           Opcional
+                        </Badge>
+                      )}
+                      {isDocumentoApenasProprio(analise.nomeDocumento) && (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 text-purple-700 border-purple-300"
+                        >
+                          <Home className="h-3 w-3" />
+                          Apenas IP
                         </Badge>
                       )}
                       <span className="font-medium text-left">
