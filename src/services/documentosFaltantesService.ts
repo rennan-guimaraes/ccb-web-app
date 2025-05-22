@@ -215,13 +215,8 @@ export class DocumentosFaltantesService {
       });
     });
 
-    // Sort: mandatory first, then by most missing
-    return analises.sort((a, b) => {
-      if (a.isObrigatorio !== b.isObrigatorio) {
-        return a.isObrigatorio ? -1 : 1;
-      }
-      return b.casasSemDocumento - a.casasSemDocumento;
-    });
+    // Ordenação será feita no componente
+    return analises;
   }
 
   /**

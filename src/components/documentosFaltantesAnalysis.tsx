@@ -106,13 +106,23 @@ export default function DocumentosFaltantesAnalysis({
     }
   };
 
-  const filteredAnalises = analises.filter((analise) => {
-    const matchFilter =
-      filtro === "" ||
-      analise.nomeDocumento.toLowerCase().includes(filtro.toLowerCase());
-    const matchMandatory = !showOnlyMandatory || analise.isObrigatorio;
-    return matchFilter && matchMandatory;
-  });
+  const filteredAnalises = analises
+    .filter((analise) => {
+      const matchFilter =
+        filtro === "" ||
+        analise.nomeDocumento.toLowerCase().includes(filtro.toLowerCase());
+      const matchMandatory = !showOnlyMandatory || analise.isObrigatorio;
+      return matchFilter && matchMandatory;
+    })
+    .sort((a, b) => {
+      // Ordem por preenchimento: maior percentual primeiro (menos faltas primeiro)
+      // Documentos obrigatórios têm prioridade
+      if (a.isObrigatorio !== b.isObrigatorio) {
+        return a.isObrigatorio ? -1 : 1;
+      }
+      // Entre documentos do mesmo tipo (obrigatório/opcional), ordena por percentual real (maior primeiro)
+      return b.percentualReal - a.percentualReal;
+    });
 
   const getStatusIcon = (casa: any) => {
     if (casa.desconsiderar) {
