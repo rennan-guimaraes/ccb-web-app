@@ -31,6 +31,7 @@ import ChartDisplay from "./chartDisplay";
 import DocumentosFaltantesAnalysis from "./documentosFaltantesAnalysis";
 import AddCasaModal from "./addCasaModal";
 import BuscarImovelFaltante from "./buscarImovelFaltante";
+import DataExportImport from "./dataExportImport";
 
 interface DataDisplayProps {
   refreshTrigger?: number;
@@ -153,7 +154,7 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
 
       <CardContent>
         <Tabs defaultValue="casas" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="casas" className="gap-2">
               <Home className="h-4 w-4" />
               Casas de Oração
@@ -175,6 +176,10 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
             <TabsTrigger value="analysis" className="gap-2">
               <FileX className="h-4 w-4" />
               Documentos Faltantes
+            </TabsTrigger>
+            <TabsTrigger value="backup" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Backup
             </TabsTrigger>
           </TabsList>
 
@@ -383,6 +388,11 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
               gestaoData={gestaoData}
               casasData={casas}
             />
+          </TabsContent>
+
+          {/* Backup Tab */}
+          <TabsContent value="backup" className="space-y-4">
+            <DataExportImport onImportSuccess={loadData} />
           </TabsContent>
         </Tabs>
       </CardContent>
