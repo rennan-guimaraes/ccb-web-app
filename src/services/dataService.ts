@@ -142,11 +142,20 @@ export class DataService {
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
 
-          // Convert to JSON with header row specified
+          // Convert to JSON with header row specified and force reading more columns
           const jsonData = XLSX.utils.sheet_to_json(worksheet, {
             header: 1,
             range: headerRow,
+            defval: null, // Fill empty cells with null instead of skipping
+            blankrows: true, // Include blank rows
           });
+
+          // Debug log to see what we're actually reading
+          console.log(`Excel file read - total rows: ${jsonData.length}`);
+          if (jsonData.length > 0) {
+            console.log(`First row length: ${(jsonData[0] as any[])?.length}`);
+            console.log(`First row content:`, jsonData[0]);
+          }
 
           resolve(jsonData as any[][]);
         } catch (error) {
@@ -308,58 +317,305 @@ export class DataService {
 
       console.log(`Trying to read file: ${file.name}`);
 
-      // Read Excel file
-      const rawData = await this.readExcelSafe(file, 0);
+      // Read Excel file starting from row 15 (Python header=14 means row 14 is header, data starts at row 15)
+      const rawData = await this.readExcelSafe(file, 15);
 
       if (!rawData || rawData.length === 0) {
-        throw new Error("Excel file is empty");
+        throw new Error(
+          "Excel file is empty or has no data starting from row 16"
+        );
       }
 
-      // First row contains headers
-      const headers = rawData[0] as string[];
-      const dataRows = rawData.slice(1);
-
-      // Normalize and validate headers
-      const normalizedHeaders = headers.map((h) =>
-        h ? h.toString().toLowerCase().trim() : ""
+      // Remove completely empty rows
+      const nonEmptyRows = rawData.filter(
+        (row) =>
+          row &&
+          row.some(
+            (cell) =>
+              cell !== undefined &&
+              cell !== null &&
+              cell.toString().trim() !== ""
+          )
       );
 
-      console.log(`Columns after normalization: ${normalizedHeaders}`);
+      if (nonEmptyRows.length === 0) {
+        throw new Error("No data found after removing empty rows");
+      }
 
-      // Check required columns
-      const requiredColumns = ["codigo", "nome"];
-      const missingColumns = requiredColumns.filter(
-        (col) => !normalizedHeaders.includes(col)
+      // Use the first row as column names (following Python logic)
+      const firstRow = nonEmptyRows[0];
+      const columnNames: string[] = [];
+
+      firstRow.forEach((cell, index) => {
+        if (cell !== undefined && cell !== null && cell.toString().trim()) {
+          columnNames.push(cell.toString().trim());
+        } else {
+          columnNames.push(`Column_${index}`);
+        }
+      });
+
+      // Remove the first row (now used as headers) and get data rows
+      const dataRows = nonEmptyRows.slice(1);
+
+      // Remove empty columns and rows (following Python logic)
+      const validColumnIndices: number[] = [];
+      const removedColumns: string[] = [];
+
+      columnNames.forEach((columnName, colIndex) => {
+        // Keep column if:
+        // 1. Header has a meaningful name (not empty or generic)
+        // 2. OR column has any data in the rows
+        const hasValidHeader =
+          columnName &&
+          !columnName.startsWith("Column_") &&
+          columnName.trim() !== "";
+
+        const hasData = dataRows.some(
+          (row) =>
+            row[colIndex] !== undefined &&
+            row[colIndex] !== null &&
+            row[colIndex].toString().trim() !== ""
+        );
+
+        if (hasValidHeader || hasData) {
+          validColumnIndices.push(colIndex);
+        } else {
+          removedColumns.push(`[${colIndex}] ${columnName || "empty"}`);
+        }
+      });
+
+      console.log(`Removed columns: ${removedColumns.join(", ")}`);
+      console.log(`Valid column indices: ${validColumnIndices.join(", ")}`);
+
+      // Filter columns to keep only valid ones
+      const finalColumnNames = validColumnIndices.map(
+        (index) => columnNames[index]
       );
+      const finalDataRows = dataRows
+        .map((row) => validColumnIndices.map((index) => row[index]))
+        .filter((row) =>
+          row.some(
+            (cell) =>
+              cell !== undefined &&
+              cell !== null &&
+              cell.toString().trim() !== ""
+          )
+        );
 
-      if (missingColumns.length > 0) {
+      // Create column mapping for flexible header recognition
+      const createColumnMapping = (
+        headers: string[]
+      ): Record<string, string> => {
+        const mapping: Record<string, string> = {};
+
+        headers.forEach((header) => {
+          const normalized = header.toLowerCase().trim();
+
+          // Map different variations to standard field names
+          if (
+            normalized.includes("codigo") ||
+            normalized.includes("código") ||
+            normalized.includes("administra") ||
+            normalized === "cod"
+          ) {
+            mapping["codigo"] = header;
+          } else if (
+            normalized.includes("nome") ||
+            normalized.includes("título") ||
+            normalized.includes("titulo") ||
+            normalized.includes("denominação") ||
+            normalized.includes("denominacao") ||
+            normalized.includes("casa") ||
+            (normalized.includes("casa") && normalized.includes("oração")) ||
+            (normalized.includes("casa") && normalized.includes("oracao"))
+          ) {
+            mapping["nome"] = header;
+          } else if (
+            normalized.includes("tipo") &&
+            normalized.includes("imov")
+          ) {
+            mapping["tipo_imovel"] = header;
+          } else if (
+            normalized.includes("endereco") ||
+            normalized.includes("endereço") ||
+            normalized.includes("local") ||
+            normalized.includes("rua")
+          ) {
+            mapping["endereco"] = header;
+          } else if (
+            normalized.includes("status") ||
+            normalized.includes("situacao") ||
+            normalized.includes("situação") ||
+            normalized.includes("estado")
+          ) {
+            mapping["status"] = header;
+          } else if (
+            normalized.includes("observa") ||
+            normalized.includes("obs") ||
+            normalized.includes("comentar") ||
+            normalized.includes("notas")
+          ) {
+            mapping["observacoes"] = header;
+          }
+        });
+
+        return mapping;
+      };
+
+      const columnMapping = createColumnMapping(finalColumnNames);
+
+      console.log(`Available columns: ${finalColumnNames.join(", ")}`);
+      console.log(`Total columns found: ${finalColumnNames.length}`);
+      console.log(`Column mapping: ${JSON.stringify(columnMapping, null, 2)}`);
+      console.log(`Sample of first few data rows:`, finalDataRows.slice(0, 2));
+
+      // Check if we have at least codigo or nome mapped
+      if (!columnMapping["codigo"] && !columnMapping["nome"]) {
+        // If no standard mapping found, try to use the first column as codigo and second as nome
+        if (finalColumnNames.length >= 1) {
+          columnMapping["codigo"] = finalColumnNames[0];
+          console.log(`Using first column '${finalColumnNames[0]}' as codigo`);
+        }
+        if (finalColumnNames.length >= 2) {
+          columnMapping["nome"] = finalColumnNames[1];
+          console.log(`Using second column '${finalColumnNames[1]}' as nome`);
+        }
+      }
+
+      // Final validation
+      if (!columnMapping["codigo"] && !columnMapping["nome"]) {
         throw new Error(
-          `Required columns not found: ${missingColumns.join(", ")}.\n` +
-            `Available columns: ${normalizedHeaders.join(", ")}`
+          `Could not identify codigo or nome columns.\n` +
+            `Available columns: ${finalColumnNames.join(", ")}\n` +
+            `Expected columns like: codigo/código/administração, nome/título/denominação`
         );
       }
 
       // Process each row
       const casas: CasaOracao[] = [];
 
-      dataRows.forEach((row, index) => {
+      finalDataRows.forEach((row, index) => {
         try {
           if (!row || row.length === 0) return;
 
-          // Create object from row data
+          // Create object from row data using column mapping
           const rowData: Record<string, string> = {};
-          normalizedHeaders.forEach((header, colIndex) => {
-            if (header && row[colIndex] !== undefined) {
-              rowData[header] = row[colIndex]?.toString().trim() || "";
+
+          // Use column mapping to find the correct positions for each field
+          const casaOracaoIndex = finalColumnNames.indexOf("Casa de Oração");
+          const tipoImovelIndex = finalColumnNames.indexOf("Tipo de Imóvel");
+
+          if (casaOracaoIndex >= 0 && row[casaOracaoIndex]) {
+            // Extract codigo and nome from "Casa de Oração" column: "BR 21-1346 - VILA JACIRA"
+            const casaInfo = row[casaOracaoIndex]?.toString().trim() || "";
+
+            if (casaInfo.includes(" - ")) {
+              const parts = casaInfo.split(" - ");
+              rowData["codigo"] = parts[0]?.trim() || "";
+              rowData["nome"] = parts.slice(1).join(" - ").trim() || ""; // Join in case there are multiple " - "
+            } else {
+              // If no separator found, use the whole string as nome and leave codigo empty
+              rowData["codigo"] = "";
+              rowData["nome"] = casaInfo;
+            }
+          }
+
+          if (tipoImovelIndex >= 0 && row[tipoImovelIndex]) {
+            rowData["tipo_imovel"] =
+              row[tipoImovelIndex]?.toString().trim() || "";
+          }
+
+          // Log all values to debug (showing total length and all positions)
+          console.log(`Row ${index + 1} total length: ${row.length}`);
+          console.log(
+            `Row ${index + 1} all values:`,
+            row.map((val, idx) => `[${idx}]: ${val}`)
+          );
+
+          // Try to map by column headers instead of fixed positions
+          finalColumnNames.forEach((columnName, colIndex) => {
+            const cellValue = row[colIndex]?.toString().trim() || "";
+            if (cellValue && cellValue !== "undefined") {
+              const normalizedColumnName = columnName.toLowerCase().trim();
+
+              // Check if this column is "Endereço"
+              if (
+                normalizedColumnName.includes("endereço") ||
+                normalizedColumnName.includes("endereco")
+              ) {
+                rowData["endereco"] = cellValue;
+                console.log(
+                  `Found endereco in column '${columnName}' at position ${colIndex}: ${cellValue}`
+                );
+              }
+
+              // Check if this column is "Status" or "Situação"
+              if (
+                normalizedColumnName.includes("status") ||
+                normalizedColumnName.includes("situação") ||
+                normalizedColumnName.includes("situacao")
+              ) {
+                rowData["status"] = cellValue;
+                console.log(
+                  `Found status in column '${columnName}' at position ${colIndex}: ${cellValue}`
+                );
+              }
             }
           });
+
+          // Fallback: Try to find endereço and status in ANY position if not found in specific positions
+          if (!rowData["endereco"] || !rowData["status"]) {
+            for (let i = 0; i < row.length; i++) {
+              const cellValue = row[i]?.toString().trim() || "";
+              if (cellValue && cellValue !== "undefined") {
+                // Check if this looks like an address (more comprehensive)
+                if (
+                  !rowData["endereco"] &&
+                  (cellValue.includes("RUA") ||
+                    cellValue.includes("AVENIDA") ||
+                    cellValue.includes("ESTRADA") ||
+                    cellValue.includes("ALAMEDA") ||
+                    cellValue.includes("PRAÇA") ||
+                    cellValue.includes("TRAVESSA") ||
+                    (/\d+/.test(cellValue) && cellValue.includes(","))) // Has numbers and comma (address pattern)
+                ) {
+                  rowData["endereco"] = cellValue;
+                  console.log(
+                    `Found endereco at fallback position ${i}: ${cellValue}`
+                  );
+                }
+                // Check if this looks like a status (more comprehensive)
+                if (
+                  !rowData["status"] &&
+                  (cellValue.toLowerCase().includes("ativo") ||
+                    cellValue.toLowerCase().includes("inativo") ||
+                    cellValue.toLowerCase().includes("pendente") ||
+                    cellValue.toLowerCase().includes("ativa") ||
+                    cellValue.toLowerCase().includes("inativa"))
+                ) {
+                  rowData["status"] = cellValue;
+                  console.log(
+                    `Found status at fallback position ${i}: ${cellValue}`
+                  );
+                }
+              }
+            }
+          }
+
+          // Debug: log the actual row data
+          console.log(`Row ${index + 1} raw data:`, row);
+          console.log(`Row ${index + 1} mapped data:`, rowData);
 
           // Validate required fields
           const codigo = rowData.codigo?.trim();
           const nome = rowData.nome?.trim();
 
           if (!codigo || !nome) {
-            console.log(`Row ${index + 1} ignored: empty code or name`);
+            console.log(
+              `Row ${
+                index + 1
+              } ignored: empty code or name (codigo: "${codigo}", nome: "${nome}")`
+            );
             return;
           }
 
