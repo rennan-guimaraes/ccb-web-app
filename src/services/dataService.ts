@@ -835,13 +835,16 @@ export class DataService {
     shouldSave: boolean = true
   ): Promise<GestaoVistaData[] | null> {
     try {
-      const data = await this.importGestaoVistaFromExcelInternal(file);
+      const newData = await this.importGestaoVistaFromExcelInternal(file);
 
-      if (data && shouldSave) {
-        this.saveGestaoVista(data);
+      if (newData && shouldSave) {
+        // Merge with existing data to avoid duplicates
+        const mergedData = this.mergeGestaoVistaData(newData);
+        this.saveGestaoVista(mergedData);
+        return mergedData;
       }
 
-      return data;
+      return newData;
     } catch (error) {
       console.error("Error importing gestao vista file:", error);
       throw new Error(`Error importing gestao vista file: ${error}`);
@@ -1052,6 +1055,7 @@ export class DataService {
 
   /**
    * Generate traditional gestao data from gestao vista data for compatibility
+   * Only considers the most current valid document of each type
    */
   generateGestaoFromGestaoVista(
     gestaoVistaData: GestaoVistaData[]
@@ -1074,12 +1078,25 @@ export class DataService {
         codigo: casa.codigo,
       };
 
-      // Group documents by normalized name and mark as present
-      const documentsPresent = new Set<string>();
+      // Group documents by type and find the most current valid one
+      const documentsByType = new Map<string, DocumentoDetalhado[]>();
+
       casa.documentos.forEach((doc) => {
         if (doc.presente) {
           const normalizedName = normalizarNomeDocumento(doc.nomeDocumento);
-          documentsPresent.add(normalizedName);
+          if (!documentsByType.has(normalizedName)) {
+            documentsByType.set(normalizedName, []);
+          }
+          documentsByType.get(normalizedName)!.push(doc);
+        }
+      });
+
+      // For each document type, find the most current valid document
+      const documentsPresent = new Set<string>();
+      documentsByType.forEach((docs, docType) => {
+        const mostCurrentValidDoc = this.getMostCurrentValidDocument(docs);
+        if (mostCurrentValidDoc) {
+          documentsPresent.add(docType);
         }
       });
 
@@ -1099,5 +1116,192 @@ export class DataService {
     });
 
     return gestaoData;
+  }
+
+  /**
+   * Check if a document is valid (not expired)
+   */
+  private isDocumentValid(doc: DocumentoDetalhado): boolean {
+    // If no expiration date, consider valid
+    if (!doc.dataValidade) {
+      return true;
+    }
+
+    // Check if document is not expired
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+
+    const validadeDate = new Date(doc.dataValidade);
+    validadeDate.setHours(0, 0, 0, 0);
+
+    return validadeDate >= today;
+  }
+
+  /**
+   * From a list of documents of the same type, return the most current valid one
+   * Prioritizes: 1) Valid over invalid, 2) Most recent validity date, 3) Most recent emission date
+   */
+  private getMostCurrentValidDocument(
+    docs: DocumentoDetalhado[]
+  ): DocumentoDetalhado | null {
+    if (docs.length === 0) {
+      return null;
+    }
+
+    if (docs.length === 1) {
+      return this.isDocumentValid(docs[0]) ? docs[0] : null;
+    }
+
+    // Separate valid and invalid documents
+    const validDocs = docs.filter((doc) => this.isDocumentValid(doc));
+    const invalidDocs = docs.filter((doc) => !this.isDocumentValid(doc));
+
+    // If we have valid documents, work with those; otherwise consider invalid ones
+    const candidateDocs = validDocs.length > 0 ? validDocs : invalidDocs;
+
+    // Sort by validity date (most distant future first), then by emission date (most recent first)
+    const sortedDocs = candidateDocs.sort((a, b) => {
+      // First, compare validity dates
+      if (a.dataValidade && b.dataValidade) {
+        const validadeComparison =
+          b.dataValidade.getTime() - a.dataValidade.getTime();
+        if (validadeComparison !== 0) {
+          return validadeComparison;
+        }
+      } else if (a.dataValidade && !b.dataValidade) {
+        return -1; // a has validity date, b doesn't - prefer a
+      } else if (!a.dataValidade && b.dataValidade) {
+        return 1; // b has validity date, a doesn't - prefer b
+      }
+
+      // If validity dates are equal or both missing, compare emission dates
+      if (a.dataEmissao && b.dataEmissao) {
+        return b.dataEmissao.getTime() - a.dataEmissao.getTime(); // Most recent emission first
+      } else if (a.dataEmissao && !b.dataEmissao) {
+        return -1; // a has emission date, b doesn't - prefer a
+      } else if (!a.dataEmissao && b.dataEmissao) {
+        return 1; // b has emission date, a doesn't - prefer b
+      }
+
+      return 0; // Equal in all criteria
+    });
+
+    // Return the most current document only if it's valid, or null if no valid documents
+    const mostCurrent = sortedDocs[0];
+    return validDocs.length > 0 ? mostCurrent : null;
+  }
+
+  /**
+   * Merge new gestao vista data with existing data, avoiding duplicates
+   * and keeping the most recent/valid documents
+   */
+  private mergeGestaoVistaData(newData: GestaoVistaData[]): GestaoVistaData[] {
+    const existingData = this.loadGestaoVista();
+    const mergedMap = new Map<string, GestaoVistaData>();
+
+    // First, add all existing casas to the map
+    existingData.forEach((casa) => {
+      mergedMap.set(casa.codigo, { ...casa });
+    });
+
+    // Then merge new data
+    newData.forEach((newCasa) => {
+      const existingCasa = mergedMap.get(newCasa.codigo);
+
+      if (!existingCasa) {
+        // New casa, add it directly
+        mergedMap.set(newCasa.codigo, { ...newCasa });
+      } else {
+        // Merge documents for existing casa
+        const mergedDocuments = this.mergeDocuments(
+          existingCasa.documentos,
+          newCasa.documentos
+        );
+
+        mergedMap.set(newCasa.codigo, {
+          ...existingCasa,
+          documentos: mergedDocuments,
+        });
+      }
+    });
+
+    return Array.from(mergedMap.values());
+  }
+
+  /**
+   * Merge document arrays, keeping all documents but organizing by type
+   * Multiple documents of the same type are allowed (with different validity dates)
+   */
+  private mergeDocuments(
+    existingDocs: DocumentoDetalhado[],
+    newDocs: DocumentoDetalhado[]
+  ): DocumentoDetalhado[] {
+    const allDocuments: DocumentoDetalhado[] = [];
+    const documentsByType = new Map<string, DocumentoDetalhado[]>();
+
+    // Helper to create a unique key for each document type
+    const getDocumentKey = (doc: DocumentoDetalhado): string => {
+      return normalizarNomeDocumento(doc.nomeDocumento);
+    };
+
+    // Helper to create a unique identifier for each specific document instance
+    const getDocumentInstanceKey = (doc: DocumentoDetalhado): string => {
+      const baseKey = getDocumentKey(doc);
+      const emissaoStr = doc.dataEmissao?.toISOString() || "no-emission";
+      const validadeStr = doc.dataValidade?.toISOString() || "no-validity";
+      return `${baseKey}_${emissaoStr}_${validadeStr}`;
+    };
+
+    // Combine all documents first
+    const allCombined = [...existingDocs, ...newDocs];
+    const seenInstances = new Set<string>();
+
+    // Remove exact duplicates (same type, same dates)
+    allCombined.forEach((doc) => {
+      const instanceKey = getDocumentInstanceKey(doc);
+      if (!seenInstances.has(instanceKey)) {
+        seenInstances.add(instanceKey);
+        allDocuments.push(doc);
+
+        // Group by type for easier processing
+        const typeKey = getDocumentKey(doc);
+        if (!documentsByType.has(typeKey)) {
+          documentsByType.set(typeKey, []);
+        }
+        documentsByType.get(typeKey)!.push(doc);
+      }
+    });
+
+    return allDocuments;
+  }
+
+  /**
+   * Determine if we should replace an existing document with a new one
+   * Prioritizes: 1) Valid over invalid, 2) More recent emission date
+   */
+  private shouldReplaceDocument(
+    existing: DocumentoDetalhado,
+    newDoc: DocumentoDetalhado
+  ): boolean {
+    const existingValid = this.isDocumentValid(existing);
+    const newValid = this.isDocumentValid(newDoc);
+
+    // If validity differs, prefer the valid one
+    if (existingValid !== newValid) {
+      return newValid; // Replace if new is valid and existing is not
+    }
+
+    // If both have same validity, prefer more recent emission date
+    if (existing.dataEmissao && newDoc.dataEmissao) {
+      return newDoc.dataEmissao > existing.dataEmissao;
+    }
+
+    // If only one has emission date, prefer that one
+    if (newDoc.dataEmissao && !existing.dataEmissao) {
+      return true;
+    }
+
+    // Otherwise keep existing
+    return false;
   }
 }

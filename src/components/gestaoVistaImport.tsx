@@ -64,7 +64,7 @@ export default function GestaoVistaImport({
         );
         setMessage({
           type: "success",
-          text: `${gestaoVistaData.length} casas com ${totalDocumentos} documentos importados com sucesso! Dados tradicionais gerados automaticamente.`,
+          text: `${gestaoVistaData.length} casas com ${totalDocumentos} documentos importados com sucesso! Dados mesclados inteligentemente - apenas documentos válidos contam para análises.`,
         });
         onImportSuccess?.(gestaoVistaData);
 
@@ -231,7 +231,22 @@ export default function GestaoVistaImport({
             </div>
             <ul className="text-xs text-purple-700 space-y-1 ml-6">
               <li>• Datas de emissão e validade dos documentos</li>
-              <li>• Controle detalhado por documento</li>
+              <li>
+                • <strong>Documentos mais atuais</strong> - considera apenas o
+                mais recente de cada tipo
+              </li>
+              <li>
+                • <strong>Múltiplos documentos</strong> do mesmo tipo são
+                suportados
+              </li>
+              <li>
+                • <strong>Mescla inteligente</strong> - evita duplicação em
+                imports subsequentes
+              </li>
+              <li>
+                • <strong>Priorização automática</strong> - validade mais
+                distante tem prioridade
+              </li>
               <li>• Geração automática do formato gestão tradicional</li>
               <li>• Validação inteligente de dados</li>
             </ul>

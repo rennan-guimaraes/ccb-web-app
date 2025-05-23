@@ -79,17 +79,27 @@ export default function GestaoConsolidada({
     loadData();
   }, []);
 
-  // Filter data based on search term
+  // Filter data based on search term (código or nome)
   useEffect(() => {
     if (!searchTerm) {
       setFilteredData(gestaoVistaData);
     } else {
-      const filtered = gestaoVistaData.filter((casa) =>
-        casa.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const filtered = gestaoVistaData.filter((casa) => {
+        const searchLower = searchTerm.toLowerCase();
+
+        // Search by código
+        const matchesCodigo = casa.codigo.toLowerCase().includes(searchLower);
+
+        // Search by nome (find corresponding casa from props)
+        const casaInfo = casas.find((c) => c.codigo === casa.codigo);
+        const matchesNome =
+          casaInfo?.nome?.toLowerCase().includes(searchLower) || false;
+
+        return matchesCodigo || matchesNome;
+      });
       setFilteredData(filtered);
     }
-  }, [searchTerm, gestaoVistaData]);
+  }, [searchTerm, gestaoVistaData, casas]);
 
   const loadData = () => {
     const gestaoVistaData = dataService.loadGestaoVista();
@@ -161,29 +171,141 @@ export default function GestaoConsolidada({
     }
   };
 
-  const getTotalDocuments = () => {
-    return gestaoVistaData.reduce(
-      (total, casa) => total + casa.documentos.length,
-      0
-    );
+  const getTotalDocumentTypes = () => {
+    const allTypes = new Set<string>();
+    gestaoVistaData.forEach((casa) => {
+      casa.documentos.forEach((doc) => {
+        allTypes.add(doc.nomeDocumento);
+      });
+    });
+    return allTypes.size;
+  };
+
+  const getValidDocuments = () => {
+    return gestaoVistaData.reduce((total, casa) => {
+      // Group documents by type and count only the most current valid ones
+      const documentsByType = new Map<string, any[]>();
+
+      casa.documentos.forEach((doc) => {
+        const normalizedName = doc.nomeDocumento; // Using original name for now
+        if (!documentsByType.has(normalizedName)) {
+          documentsByType.set(normalizedName, []);
+        }
+        documentsByType.get(normalizedName)!.push(doc);
+      });
+
+      let validDocsForThisCasa = 0;
+      documentsByType.forEach((docs) => {
+        // Find the most current valid document of this type
+        const validDocs = docs.filter(
+          (doc) => !isDateExpired(doc.dataValidade)
+        );
+        if (validDocs.length > 0) {
+          // Sort by validity date (most distant future first)
+          const sortedValid = validDocs.sort((a, b) => {
+            if (a.dataValidade && b.dataValidade) {
+              return b.dataValidade.getTime() - a.dataValidade.getTime();
+            }
+            return 0;
+          });
+          validDocsForThisCasa += 1; // Count this document type as having a valid document
+        }
+      });
+
+      return total + validDocsForThisCasa;
+    }, 0);
   };
 
   const getDocumentsExpired = () => {
     return gestaoVistaData.reduce((total, casa) => {
-      return (
-        total +
-        casa.documentos.filter((doc) => isDateExpired(doc.dataValidade)).length
-      );
+      // Group documents by type and check only the most current ones
+      const documentsByType = new Map<string, any[]>();
+
+      casa.documentos.forEach((doc) => {
+        const normalizedName = doc.nomeDocumento;
+        if (!documentsByType.has(normalizedName)) {
+          documentsByType.set(normalizedName, []);
+        }
+        documentsByType.get(normalizedName)!.push(doc);
+      });
+
+      let expiredCurrentDocsForThisCasa = 0;
+      documentsByType.forEach((docs) => {
+        // Find the most current document of this type
+        let currentDoc;
+
+        // First try to find the most current valid document
+        const validDocs = docs.filter(
+          (doc) => !isDateExpired(doc.dataValidade)
+        );
+
+        if (validDocs.length > 0) {
+          // Sort valid documents by validity date (most distant future first)
+          const sortedValid = validDocs.sort((a, b) => {
+            if (a.dataValidade && b.dataValidade) {
+              return b.dataValidade.getTime() - a.dataValidade.getTime();
+            }
+            return 0;
+          });
+          currentDoc = sortedValid[0];
+        } else {
+          // No valid documents - use the most recently expired one
+          const sortedByValidity = docs.sort((a, b) => {
+            if (a.dataValidade && b.dataValidade) {
+              return b.dataValidade.getTime() - a.dataValidade.getTime();
+            }
+            return 0;
+          });
+          currentDoc = sortedByValidity[0];
+        }
+
+        // Check if the current document is expired
+        if (currentDoc && isDateExpired(currentDoc.dataValidade)) {
+          expiredCurrentDocsForThisCasa += 1;
+        }
+      });
+
+      return total + expiredCurrentDocsForThisCasa;
     }, 0);
   };
 
   const getDocumentsExpiringSoon = () => {
     return gestaoVistaData.reduce((total, casa) => {
-      return (
-        total +
-        casa.documentos.filter((doc) => isDateExpiringSoon(doc.dataValidade))
-          .length
-      );
+      // Group documents by type and check only the most current ones
+      const documentsByType = new Map<string, any[]>();
+
+      casa.documentos.forEach((doc) => {
+        const normalizedName = doc.nomeDocumento;
+        if (!documentsByType.has(normalizedName)) {
+          documentsByType.set(normalizedName, []);
+        }
+        documentsByType.get(normalizedName)!.push(doc);
+      });
+
+      let expiringSoonCurrentDocsForThisCasa = 0;
+      documentsByType.forEach((docs) => {
+        // Find the most current valid document of this type
+        const validDocs = docs.filter(
+          (doc) => !isDateExpired(doc.dataValidade)
+        );
+        if (validDocs.length > 0) {
+          // Sort by validity date (most distant future first)
+          const sortedValid = validDocs.sort((a, b) => {
+            if (a.dataValidade && b.dataValidade) {
+              return b.dataValidade.getTime() - a.dataValidade.getTime();
+            }
+            return 0;
+          });
+
+          // Check if the most current valid document is expiring soon
+          const mostCurrent = sortedValid[0];
+          if (isDateExpiringSoon(mostCurrent.dataValidade)) {
+            expiringSoonCurrentDocsForThisCasa += 1;
+          }
+        }
+      });
+
+      return total + expiringSoonCurrentDocsForThisCasa;
     }, 0);
   };
 
@@ -472,7 +594,7 @@ export default function GestaoConsolidada({
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por código da casa..."
+                placeholder="Buscar por código ou nome da casa..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -530,7 +652,7 @@ export default function GestaoConsolidada({
 
       {/* Statistics - Only show if gestaoVistaData has data */}
       {gestaoVistaData.length > 0 && viewMode === "cards" && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-purple-600">
@@ -543,11 +665,19 @@ export default function GestaoConsolidada({
           </Card>
           <Card>
             <CardContent className="p-4">
+              <div className="text-2xl font-bold text-green-600">
+                {getValidDocuments()}
+              </div>
+              <div className="text-sm text-muted-foreground">Tipos Válidos</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">
-                {getTotalDocuments()}
+                {getTotalDocumentTypes()}
               </div>
               <div className="text-sm text-muted-foreground">
-                Total de Documentos
+                Tipos de Documentos
               </div>
             </CardContent>
           </Card>
@@ -557,7 +687,7 @@ export default function GestaoConsolidada({
                 {getDocumentsExpiringSoon()}
               </div>
               <div className="text-sm text-muted-foreground">
-                Vencendo em 30 dias
+                Tipos a Vencer
               </div>
             </CardContent>
           </Card>
@@ -567,7 +697,7 @@ export default function GestaoConsolidada({
                 {getDocumentsExpired()}
               </div>
               <div className="text-sm text-muted-foreground">
-                Documentos Vencidos
+                Tipos Vencidos
               </div>
             </CardContent>
           </Card>
@@ -590,7 +720,7 @@ export default function GestaoConsolidada({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Código</TableHead>
+                    <TableHead>Casa de Oração</TableHead>
                     <TableHead>Documentos</TableHead>
                     <TableHead>Vencidos</TableHead>
                     <TableHead>A Vencer</TableHead>
@@ -599,17 +729,83 @@ export default function GestaoConsolidada({
                 </TableHeader>
                 <TableBody>
                   {filteredData.map((casa) => {
-                    const expired = casa.documentos.filter((doc) =>
-                      isDateExpired(doc.dataValidade)
-                    ).length;
-                    const expiringSoon = casa.documentos.filter((doc) =>
-                      isDateExpiringSoon(doc.dataValidade)
-                    ).length;
+                    // Count only current documents that are expired (same logic as metrics)
+                    const documentsByType = new Map<string, any[]>();
+
+                    casa.documentos.forEach((doc) => {
+                      const normalizedName = doc.nomeDocumento;
+                      if (!documentsByType.has(normalizedName)) {
+                        documentsByType.set(normalizedName, []);
+                      }
+                      documentsByType.get(normalizedName)!.push(doc);
+                    });
+
+                    let expired = 0;
+                    let expiringSoon = 0;
+
+                    documentsByType.forEach((docs) => {
+                      // Find the most current document of this type
+                      let currentDoc;
+
+                      // First try to find the most current valid document
+                      const validDocs = docs.filter(
+                        (doc) => !isDateExpired(doc.dataValidade)
+                      );
+
+                      if (validDocs.length > 0) {
+                        // Sort valid documents by validity date (most distant future first)
+                        const sortedValid = validDocs.sort((a, b) => {
+                          if (a.dataValidade && b.dataValidade) {
+                            return (
+                              b.dataValidade.getTime() -
+                              a.dataValidade.getTime()
+                            );
+                          }
+                          return 0;
+                        });
+                        currentDoc = sortedValid[0];
+                      } else {
+                        // No valid documents - use the most recently expired one
+                        const sortedByValidity = docs.sort((a, b) => {
+                          if (a.dataValidade && b.dataValidade) {
+                            return (
+                              b.dataValidade.getTime() -
+                              a.dataValidade.getTime()
+                            );
+                          }
+                          return 0;
+                        });
+                        currentDoc = sortedByValidity[0];
+                      }
+
+                      // Count based on current document status
+                      if (currentDoc) {
+                        if (isDateExpired(currentDoc.dataValidade)) {
+                          expired += 1;
+                        } else if (
+                          isDateExpiringSoon(currentDoc.dataValidade)
+                        ) {
+                          expiringSoon += 1;
+                        }
+                      }
+                    });
 
                     return (
                       <TableRow key={casa.codigo}>
                         <TableCell className="font-medium">
-                          {casa.codigo}
+                          <div>
+                            <div className="font-medium">
+                              {(() => {
+                                const casaInfo = casas.find(
+                                  (c) => c.codigo === casa.codigo
+                                );
+                                return casaInfo?.nome || casa.codigo;
+                              })()}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {casa.codigo}
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -1236,7 +1432,18 @@ export default function GestaoConsolidada({
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes - {selectedCasa?.codigo}</DialogTitle>
+            <DialogTitle>
+              Detalhes -{" "}
+              {(() => {
+                if (!selectedCasa) return "";
+                const casaInfo = casas.find(
+                  (c) => c.codigo === selectedCasa.codigo
+                );
+                return casaInfo?.nome
+                  ? `${casaInfo.nome} (${selectedCasa.codigo})`
+                  : selectedCasa.codigo;
+              })()}
+            </DialogTitle>
           </DialogHeader>
 
           {selectedCasa && (
@@ -1246,23 +1453,63 @@ export default function GestaoConsolidada({
                 <Card>
                   <CardContent className="p-4 text-center">
                     <div className="text-2xl font-bold text-blue-600">
-                      {selectedCasa.documentos.length}
+                      {(() => {
+                        // Count unique document types
+                        const documentTypes = new Set<string>();
+                        selectedCasa.documentos.forEach((doc) => {
+                          documentTypes.add(doc.nomeDocumento);
+                        });
+                        return documentTypes.size;
+                      })()}
                     </div>
-                    <div className="text-sm text-muted-foreground">Total</div>
+                    <div className="text-sm text-muted-foreground">
+                      Tipos de Docs
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardContent className="p-4 text-center">
                     <div className="text-2xl font-bold text-yellow-600">
-                      {
-                        selectedCasa.documentos.filter((doc) =>
-                          isDateExpiringSoon(doc.dataValidade)
-                        ).length
-                      }
+                      {(() => {
+                        // Count only current documents that are expiring soon
+                        const documentsByType = new Map<string, any[]>();
+
+                        selectedCasa.documentos.forEach((doc) => {
+                          if (!documentsByType.has(doc.nomeDocumento)) {
+                            documentsByType.set(doc.nomeDocumento, []);
+                          }
+                          documentsByType.get(doc.nomeDocumento)!.push(doc);
+                        });
+
+                        let expiringSoonCurrent = 0;
+                        documentsByType.forEach((docs) => {
+                          const validDocs = docs.filter(
+                            (doc) => !isDateExpired(doc.dataValidade)
+                          );
+                          if (validDocs.length > 0) {
+                            const sortedValid = validDocs.sort((a, b) => {
+                              if (a.dataValidade && b.dataValidade) {
+                                return (
+                                  b.dataValidade.getTime() -
+                                  a.dataValidade.getTime()
+                                );
+                              }
+                              return 0;
+                            });
+
+                            const mostCurrent = sortedValid[0];
+                            if (isDateExpiringSoon(mostCurrent.dataValidade)) {
+                              expiringSoonCurrent += 1;
+                            }
+                          }
+                        });
+
+                        return expiringSoonCurrent;
+                      })()}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      A Vencer
+                      A Vencer (Atuais)
                     </div>
                   </CardContent>
                 </Card>
@@ -1270,14 +1517,67 @@ export default function GestaoConsolidada({
                 <Card>
                   <CardContent className="p-4 text-center">
                     <div className="text-2xl font-bold text-red-600">
-                      {
-                        selectedCasa.documentos.filter((doc) =>
-                          isDateExpired(doc.dataValidade)
-                        ).length
-                      }
+                      {(() => {
+                        // Count only current documents that are expired
+                        const documentsByType = new Map<string, any[]>();
+
+                        selectedCasa.documentos.forEach((doc) => {
+                          if (!documentsByType.has(doc.nomeDocumento)) {
+                            documentsByType.set(doc.nomeDocumento, []);
+                          }
+                          documentsByType.get(doc.nomeDocumento)!.push(doc);
+                        });
+
+                        let expiredCurrent = 0;
+                        documentsByType.forEach((docs) => {
+                          // Find the most current document of this type
+                          let currentDoc;
+
+                          // First try to find the most current valid document
+                          const validDocs = docs.filter(
+                            (doc) => !isDateExpired(doc.dataValidade)
+                          );
+
+                          if (validDocs.length > 0) {
+                            // Sort valid documents by validity date (most distant future first)
+                            const sortedValid = validDocs.sort((a, b) => {
+                              if (a.dataValidade && b.dataValidade) {
+                                return (
+                                  b.dataValidade.getTime() -
+                                  a.dataValidade.getTime()
+                                );
+                              }
+                              return 0;
+                            });
+                            currentDoc = sortedValid[0];
+                          } else {
+                            // No valid documents - use the most recently expired one
+                            const sortedByValidity = docs.sort((a, b) => {
+                              if (a.dataValidade && b.dataValidade) {
+                                return (
+                                  b.dataValidade.getTime() -
+                                  a.dataValidade.getTime()
+                                );
+                              }
+                              return 0;
+                            });
+                            currentDoc = sortedByValidity[0];
+                          }
+
+                          // Check if the current document is expired
+                          if (
+                            currentDoc &&
+                            isDateExpired(currentDoc.dataValidade)
+                          ) {
+                            expiredCurrent += 1;
+                          }
+                        });
+
+                        return expiredCurrent;
+                      })()}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Vencidos
+                      Vencidos (Atuais)
                     </div>
                   </CardContent>
                 </Card>
@@ -1287,6 +1587,27 @@ export default function GestaoConsolidada({
               <Card>
                 <CardHeader>
                   <CardTitle>Documentos</CardTitle>
+                  <CardDescription>
+                    {(() => {
+                      const totalDocs = selectedCasa.documentos.length;
+                      const documentsByType = new Map<string, any[]>();
+
+                      selectedCasa.documentos.forEach((doc) => {
+                        if (!documentsByType.has(doc.nomeDocumento)) {
+                          documentsByType.set(doc.nomeDocumento, []);
+                        }
+                        documentsByType.get(doc.nomeDocumento)!.push(doc);
+                      });
+
+                      const duplicateTypes = Array.from(
+                        documentsByType.entries()
+                      ).filter(([_, docs]) => docs.length > 1).length;
+
+                      return duplicateTypes > 0
+                        ? `${totalDocs} documentos (${duplicateTypes} tipos com múltiplas versões)`
+                        : `${totalDocs} documentos únicos`;
+                    })()}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -1296,48 +1617,152 @@ export default function GestaoConsolidada({
                         <TableHead>Data Emissão</TableHead>
                         <TableHead>Data Validade</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Atual</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedCasa.documentos.map((doc, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">
-                                {doc.nomeDocumento}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                Código: {doc.codigoDocumento}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              {formatDate(doc.dataEmissao)}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              <Badge
-                                variant={getDateBadgeVariant(doc.dataValidade)}
-                              >
-                                {formatDate(doc.dataValidade)}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {isDateExpired(doc.dataValidade) ? (
-                              <Badge variant="destructive">Vencido</Badge>
-                            ) : isDateExpiringSoon(doc.dataValidade) ? (
-                              <Badge variant="secondary">A Vencer</Badge>
-                            ) : (
-                              <Badge variant="default">Válido</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {(() => {
+                        // Group documents by type to identify current ones
+                        const documentsByType = new Map<string, any[]>();
+
+                        selectedCasa.documentos.forEach((doc) => {
+                          if (!documentsByType.has(doc.nomeDocumento)) {
+                            documentsByType.set(doc.nomeDocumento, []);
+                          }
+                          documentsByType.get(doc.nomeDocumento)!.push(doc);
+                        });
+
+                        // Find the most current document for each type (same logic as metrics)
+                        const currentDocuments = new Set<number>();
+                        documentsByType.forEach((docs) => {
+                          let currentDoc;
+
+                          // First try to find the most current valid document
+                          const validDocs = docs.filter(
+                            (doc) => !isDateExpired(doc.dataValidade)
+                          );
+
+                          if (validDocs.length > 0) {
+                            // Sort valid documents by validity date (most distant future first)
+                            const sortedValid = validDocs.sort((a, b) => {
+                              if (a.dataValidade && b.dataValidade) {
+                                return (
+                                  b.dataValidade.getTime() -
+                                  a.dataValidade.getTime()
+                                );
+                              }
+                              return 0;
+                            });
+                            currentDoc = sortedValid[0];
+                          } else {
+                            // No valid documents - use the most recently expired one
+                            const sortedByValidity = docs.sort((a, b) => {
+                              if (a.dataValidade && b.dataValidade) {
+                                return (
+                                  b.dataValidade.getTime() -
+                                  a.dataValidade.getTime()
+                                );
+                              }
+                              return 0;
+                            });
+                            currentDoc = sortedByValidity[0];
+                          }
+
+                          // Add the current document to the set
+                          if (currentDoc) {
+                            const currentIndex =
+                              selectedCasa.documentos.indexOf(currentDoc);
+                            currentDocuments.add(currentIndex);
+                          }
+                        });
+
+                        return selectedCasa.documentos.map((doc, index) => {
+                          const isCurrent = currentDocuments.has(index);
+                          const hasDuplicates =
+                            documentsByType.get(doc.nomeDocumento)!.length > 1;
+
+                          return (
+                            <TableRow
+                              key={index}
+                              className={
+                                !isCurrent && hasDuplicates ? "opacity-60" : ""
+                              }
+                            >
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium flex items-center gap-2">
+                                    {doc.nomeDocumento}
+                                    {hasDuplicates && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {
+                                          documentsByType.get(
+                                            doc.nomeDocumento
+                                          )!.length
+                                        }
+                                        x
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    Código: {doc.codigoDocumento}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  {formatDate(doc.dataEmissao)}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-muted-foreground" />
+                                  <Badge
+                                    variant={getDateBadgeVariant(
+                                      doc.dataValidade
+                                    )}
+                                  >
+                                    {formatDate(doc.dataValidade)}
+                                  </Badge>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {isDateExpired(doc.dataValidade) ? (
+                                  <Badge variant="destructive">Vencido</Badge>
+                                ) : isDateExpiringSoon(doc.dataValidade) ? (
+                                  <Badge variant="secondary">A Vencer</Badge>
+                                ) : (
+                                  <Badge variant="default">Válido</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isCurrent ? (
+                                  <Badge
+                                    variant="default"
+                                    className="bg-green-600"
+                                  >
+                                    ✓ Atual
+                                  </Badge>
+                                ) : hasDuplicates ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-gray-500"
+                                  >
+                                    Anterior
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    -
+                                  </span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
+                      })()}
                     </TableBody>
                   </Table>
                 </CardContent>
