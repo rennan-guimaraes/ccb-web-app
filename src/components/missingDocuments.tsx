@@ -171,6 +171,25 @@ export default function DocumentosFaltantesAnalysis({
     );
   };
 
+  const isDocumentoDesconsideradoLocado = (nomeDocumento: string) => {
+    const docNormalizado = nomeDocumento.toLowerCase();
+    return (
+      (docNormalizado.includes("projeto") &&
+        docNormalizado.includes("aprovado")) ||
+      docNormalizado.includes("habite") ||
+      docNormalizado.includes("habite-se")
+    );
+  };
+
+  const isDocumentoApenasLocado = (nomeDocumento: string) => {
+    const docNormalizado = nomeDocumento.toLowerCase();
+    return (
+      (docNormalizado.includes("contrato") ||
+        docNormalizado.includes("contratos")) &&
+      docNormalizado.includes("aluguel")
+    );
+  };
+
   if (
     !gestaoData ||
     gestaoData.length === 0 ||
@@ -206,8 +225,14 @@ export default function DocumentosFaltantesAnalysis({
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Gerencie observações e exceções para documentos em falta nas casas
-            de oração. Documentos marcados como &quot;Apenas IP&quot; são
-            obrigatórios apenas para imóveis próprios.
+            de oração. O sistema aplica regras automáticas baseadas no tipo de
+            imóvel:
+            <br />• <strong>Apenas IP:</strong> Obrigatórios apenas para imóveis
+            próprios
+            <br />• <strong>Opcional Locado:</strong> Podem ser desconsiderados
+            para imóveis locados
+            <br />• <strong>Apenas AL:</strong> Obrigatórios apenas para imóveis
+            alugados (AL)
           </p>
         </CardHeader>
         <CardContent>
@@ -320,6 +345,26 @@ export default function DocumentosFaltantesAnalysis({
                         >
                           <Home className="h-3 w-3" />
                           Apenas IP
+                        </Badge>
+                      )}
+                      {isDocumentoDesconsideradoLocado(
+                        analise.nomeDocumento
+                      ) && (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 text-blue-700 border-blue-300"
+                        >
+                          <FileX className="h-3 w-3" />
+                          Opcional Locado
+                        </Badge>
+                      )}
+                      {isDocumentoApenasLocado(analise.nomeDocumento) && (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 text-orange-700 border-orange-300"
+                        >
+                          <FileText className="h-3 w-3" />
+                          Apenas AL
                         </Badge>
                       )}
                       <span className="font-medium text-left">

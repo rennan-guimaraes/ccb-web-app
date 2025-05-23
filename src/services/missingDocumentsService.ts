@@ -144,8 +144,10 @@ export class DocumentosFaltantesService {
             (d) => d.codigo === casa.codigo && d.documento === documento
           );
 
-          // Verificação especial para documentos que só são obrigatórios para imóveis próprios
+          // Verificações especiais baseadas no tipo de imóvel
           const docNormalizado = documento.toLowerCase();
+
+          // Documentos que só são obrigatórios para imóveis próprios
           const isDocumentoApenasProprio =
             docNormalizado.includes("averbacao") ||
             docNormalizado.includes("averbação") ||
@@ -153,22 +155,67 @@ export class DocumentosFaltantesService {
             (docNormalizado.includes("compra") &&
               docNormalizado.includes("venda"));
 
+          // Documentos que podem ser desconsiderados para imóveis locados
+          const isDocumentoDesconsideradoLocado =
+            (docNormalizado.includes("projeto") &&
+              docNormalizado.includes("aprovado")) ||
+            docNormalizado.includes("habite") ||
+            docNormalizado.includes("habite-se");
+
+          // Documentos que só são obrigatórios para imóveis locados
+          const isDocumentoApenasLocado =
+            (docNormalizado.includes("contrato") ||
+              docNormalizado.includes("contratos")) &&
+            docNormalizado.includes("aluguel");
+
           let observacaoAuto = faltanteInfo?.observacao;
           let desconsiderarAuto = faltanteInfo?.desconsiderar || false;
 
-          if (isDocumentoApenasProprio && casaInfo?.tipo_imovel) {
-            // Esses documentos só são obrigatórios para imóveis próprios (IP - ...)
-            const isImovelProprio = casaInfo.tipo_imovel
-              .toUpperCase()
-              .startsWith("IP");
+          if (casaInfo?.tipo_imovel) {
+            const tipoImovel = casaInfo.tipo_imovel.toUpperCase();
+            const isImovelProprio = tipoImovel.startsWith("IP");
+            const isImovelLocado = tipoImovel.startsWith("AL"); // AL - Imóvel Alugado
 
-            if (!isImovelProprio) {
-              // Automaticamente marca como desconsiderado com observação
+            // Regra 1: Documentos apenas para imóveis próprios
+            if (isDocumentoApenasProprio && !isImovelProprio) {
               observacaoAuto =
                 observacaoAuto || "Não é imóvel próprio, logo não precisa";
               desconsiderarAuto = true;
 
-              // Salva automaticamente no localStorage se ainda não existe
+              if (!faltanteInfo) {
+                this.updateDocumentoFaltante(
+                  casa.codigo,
+                  documento,
+                  observacaoAuto,
+                  desconsiderarAuto
+                );
+              }
+            }
+
+            // Regra 2: Projeto aprovado e habite-se podem ser desconsiderados para imóveis locados
+            if (isDocumentoDesconsideradoLocado && isImovelLocado) {
+              observacaoAuto =
+                observacaoAuto ||
+                "Imóvel locado, documento pode ser desconsiderado";
+              desconsiderarAuto = true;
+
+              if (!faltanteInfo) {
+                this.updateDocumentoFaltante(
+                  casa.codigo,
+                  documento,
+                  observacaoAuto,
+                  desconsiderarAuto
+                );
+              }
+            }
+
+            // Regra 3: Contratos de aluguel apenas para imóveis locados
+            if (isDocumentoApenasLocado && !isImovelLocado) {
+              observacaoAuto =
+                observacaoAuto ||
+                "Contrato de aluguel é obrigatório apenas para imóveis alugados";
+              desconsiderarAuto = true;
+
               if (!faltanteInfo) {
                 this.updateDocumentoFaltante(
                   casa.codigo,
