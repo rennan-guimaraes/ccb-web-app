@@ -35,7 +35,6 @@ import html2canvas from "html2canvas";
 interface ChartDisplayProps {
   gestaoData: GestaoData[];
   casasData: CasaOracao[];
-  totalCasas: number;
   useExemptions?: boolean; // New prop to enable exemptions
 }
 
@@ -53,7 +52,6 @@ interface ChartDataItem {
 export default function ChartDisplay({
   gestaoData,
   casasData,
-  totalCasas,
   useExemptions = false,
 }: ChartDisplayProps) {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -78,18 +76,21 @@ export default function ChartDisplay({
 
     const documentosService = new DocumentosFaltantesService();
     const chartData: ChartDataItem[] = [];
+    const totalCasasComGestao = gestaoData.length; // Use houses with management data instead of all houses
 
     if (useExemptions) {
       // Use data with exemptions
       const dataWithExemptions = documentosService.getChartDataWithExemptions(
         gestaoData,
-        casasData,
-        totalCasas
+        casasData
       );
 
       dataWithExemptions.forEach((item) => {
         const isObrigatorio = isDocumentoObrigatorio(item.name);
-        const percentage = totalCasas > 0 ? (item.value / totalCasas) * 100 : 0;
+        const percentage =
+          totalCasasComGestao > 0
+            ? (item.value / totalCasasComGestao) * 100
+            : 0;
         const displayName = item.name.replace(/_/g, " ").toUpperCase();
 
         chartData.push({
@@ -121,7 +122,8 @@ export default function ChartDisplay({
         }, 0);
 
         const isObrigatorio = isDocumentoObrigatorio(caracteristica);
-        const percentage = totalCasas > 0 ? (contagem / totalCasas) * 100 : 0;
+        const percentage =
+          totalCasasComGestao > 0 ? (contagem / totalCasasComGestao) * 100 : 0;
         const displayName = caracteristica.replace(/_/g, " ").toUpperCase();
 
         // Only add documents that have at least one occurrence
@@ -194,6 +196,7 @@ export default function ChartDisplay({
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const totalCasasComGestao = gestaoData.length;
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg min-w-[200px]">
           <p className="font-medium text-foreground mb-1">{data.name}</p>
@@ -227,8 +230,10 @@ export default function ChartDisplay({
               </span>
             </p>
             <p className="text-sm text-muted-foreground">
-              Total de casas:{" "}
-              <span className="font-medium text-foreground">{totalCasas}</span>
+              Casas com gestão:{" "}
+              <span className="font-medium text-foreground">
+                {totalCasasComGestao}
+              </span>
             </p>
           </div>
           <div className="flex items-center gap-1 mt-2">
@@ -331,10 +336,10 @@ export default function ChartDisplay({
           <div className="p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium">Total de Casas</span>
+              <span className="text-sm font-medium">Casas com Gestão</span>
             </div>
             <p className="text-2xl font-bold text-foreground mt-1">
-              {totalCasas}
+              {gestaoData.length}
             </p>
           </div>
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">

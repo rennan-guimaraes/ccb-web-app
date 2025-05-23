@@ -106,7 +106,7 @@ export class DocumentosFaltantesService {
     if (!gestaoData || gestaoData.length === 0) return [];
 
     const documentosFaltantes = this.loadDocumentosFaltantes();
-    const totalCasas = casasData.length;
+    const totalCasasComGestao = gestaoData.length; // Use houses with management data instead of all houses
 
     // Get all document types (columns except 'codigo')
     const tiposDocumentos =
@@ -196,16 +196,19 @@ export class DocumentosFaltantesService {
         casasSemDocumento.length - casasDesconsideradas;
 
       const percentualOriginal =
-        totalCasas > 0 ? (casasComDocumento / totalCasas) * 100 : 0;
+        totalCasasComGestao > 0
+          ? (casasComDocumento / totalCasasComGestao) * 100
+          : 0;
       const percentualReal =
-        totalCasas > 0
-          ? ((casasComDocumento + casasDesconsideradas) / totalCasas) * 100
+        totalCasasComGestao > 0
+          ? ((casasComDocumento + casasDesconsideradas) / totalCasasComGestao) *
+            100
           : 0;
 
       analises.push({
         nomeDocumento: documento,
         isObrigatorio,
-        totalCasas,
+        totalCasas: totalCasasComGestao, // Use houses with management data
         casasComDocumento,
         casasSemDocumento: casasSemDocumento.length,
         casasDesconsideradas,
@@ -224,8 +227,7 @@ export class DocumentosFaltantesService {
    */
   getChartDataWithExemptions(
     gestaoData: GestaoData[],
-    casasData: CasaOracao[],
-    totalCasas: number
+    casasData: CasaOracao[]
   ): Array<{
     name: string;
     value: number;

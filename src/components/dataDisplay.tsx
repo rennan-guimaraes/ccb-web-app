@@ -400,7 +400,6 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
             <ChartDisplay
               gestaoData={gestaoData}
               casasData={casas}
-              totalCasas={casas.length}
               useExemptions={useExemptions}
             />
           </TabsContent>
