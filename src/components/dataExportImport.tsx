@@ -91,7 +91,8 @@ export default function DataExportImport({
           text: result.message,
         });
       }
-    } catch (error) {
+    } catch (_error) {
+      console.error("Erro inesperado ao processar arquivo", _error);
       setMessage({
         type: "error",
         text: "Erro inesperado ao processar arquivo",
@@ -127,7 +128,8 @@ export default function DataExportImport({
           text: result.message,
         });
       }
-    } catch (error) {
+    } catch (_error) {
+      console.error("Erro inesperado ao aplicar dados importados", _error);
       setMessage({
         type: "error",
         text: "Erro ao aplicar dados importados",

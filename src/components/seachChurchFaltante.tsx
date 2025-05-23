@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -30,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Plus, Save, AlertTriangle } from "lucide-react";
+import { Search, Save, AlertTriangle } from "lucide-react";
 
 interface BuscarImovelFaltanteProps {
   gestaoData: GestaoData[];

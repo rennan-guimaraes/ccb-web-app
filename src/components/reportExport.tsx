@@ -2,7 +2,7 @@
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
-import { CasaOracao, DocumentoFaltante } from "../types/churchs";
+import { CasaOracao } from "../types/churchs";
 
 interface DocumentoStatus {
   nome: string;
@@ -23,6 +23,13 @@ interface RelatorioExportProps {
     efetivos: number;
     percentual: string;
   };
+}
+
+interface CasaFaltante {
+  codigo: string;
+  nome: string;
+  observacao?: string;
+  desconsiderar: boolean;
 }
 
 export const exportarRelatorioPDF = async ({
@@ -303,12 +310,7 @@ export const exportarRelatorioDocumentoPDF = async ({
     casasDesconsideradas: number;
     percentualReal: number;
     percentualOriginal: number;
-    casasFaltantes: Array<{
-      codigo: string;
-      nome: string;
-      observacao?: string;
-      desconsiderar: boolean;
-    }>;
+    casasFaltantes: CasaFaltante[];
   };
   casasData: CasaOracao[];
 }) => {
@@ -324,13 +326,13 @@ export const exportarRelatorioDocumentoPDF = async ({
   const dataAtual = new Date().toLocaleDateString("pt-BR");
   const horaAtual = new Date().toLocaleTimeString("pt-BR");
 
-  const getStatusColor = (casa: any) => {
+  const getStatusColor = (casa: CasaFaltante) => {
     if (casa.desconsiderar) return "#10b981"; // green
     if (casa.observacao) return "#3b82f6"; // blue
     return "#ef4444"; // red
   };
 
-  const getStatusText = (casa: any) => {
+  const getStatusText = (casa: CasaFaltante) => {
     if (casa.desconsiderar) return "Desconsiderado";
     if (casa.observacao) return "Com observação";
     return "Pendente";

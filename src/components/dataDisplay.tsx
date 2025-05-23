@@ -230,7 +230,12 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
     };
   };
 
-  const getCellColor = (doc: any): string => {
+  const getCellColor = (doc: {
+    nome: string;
+    presente: boolean;
+    obrigatorio: boolean;
+    desconsiderar: boolean;
+  }): string => {
     if (doc.presente) return "bg-green-500";
     if (exportUseExemptions && doc.desconsiderar) return "bg-yellow-500";
     return "bg-red-500";
@@ -607,8 +612,8 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
                       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-sm text-blue-800">
                           💡 <strong>Modo com exceções ativado:</strong>{" "}
-                          Documentos marcados como "desconsiderar" serão
-                          tratados como presentes na tabela.
+                          Documentos marcados como &quot;desconsiderar&quot;
+                          serão tratados como presentes na tabela.
                         </p>
                       </div>
                     )}
@@ -1165,8 +1170,9 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
                 <p className="text-sm text-blue-800">
                   💡 <strong>Modo com exceções ativado:</strong> O gráfico
-                  considera documentos marcados como "desconsiderar" na análise
-                  de documentos faltantes como se fossem documentos presentes.
+                  considera documentos marcados como &quot;desconsiderar&quot;
+                  na análise de documentos faltantes como se fossem documentos
+                  presentes.
                 </p>
               </div>
             )}

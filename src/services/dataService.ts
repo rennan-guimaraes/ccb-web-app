@@ -129,7 +129,10 @@ export class DataService {
   /**
    * Safely reads an Excel file
    */
-  private readExcelSafe(file: File, headerRow: number = 14): Promise<any[][]> {
+  private readExcelSafe(
+    file: File,
+    headerRow: number = 14
+  ): Promise<unknown[][]> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
 
@@ -153,11 +156,13 @@ export class DataService {
           // Debug log to see what we're actually reading
           console.log(`Excel file read - total rows: ${jsonData.length}`);
           if (jsonData.length > 0) {
-            console.log(`First row length: ${(jsonData[0] as any[])?.length}`);
+            console.log(
+              `First row length: ${(jsonData[0] as unknown[])?.length}`
+            );
             console.log(`First row content:`, jsonData[0]);
           }
 
-          resolve(jsonData as any[][]);
+          resolve(jsonData as unknown[][]);
         } catch (error) {
           reject(new Error(`Error reading Excel file: ${error}`));
         }
@@ -237,7 +242,7 @@ export class DataService {
       // Process data rows - collect all values first, then combine duplicates (following Python logic)
       const processedData: GestaoData[] = [];
 
-      dataRows.forEach((row, rowIndex) => {
+      dataRows.forEach((row) => {
         if (!row || row.length === 0) return;
 
         const tempRowData: Record<string, string> = {};
@@ -506,7 +511,7 @@ export class DataService {
           const tipoImovelIndex = finalColumnNames.indexOf("Tipo de Imóvel");
 
           if (casaOracaoIndex >= 0 && row[casaOracaoIndex]) {
-            // Extract codigo and nome from "Casa de Oração" column: "BR 21-1346 - VILA JACIRA"
+            // Extract codigo and nome from "Casa de Oração" column
             const casaInfo = row[casaOracaoIndex]?.toString().trim() || "";
 
             if (casaInfo.includes(" - ")) {

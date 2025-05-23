@@ -43,6 +43,13 @@ interface DocumentosFaltantesAnalysisProps {
   casasData: CasaOracao[];
 }
 
+interface CasaFaltante {
+  codigo: string;
+  nome: string;
+  observacao?: string;
+  desconsiderar: boolean;
+}
+
 export default function DocumentosFaltantesAnalysis({
   gestaoData,
   casasData,
@@ -138,7 +145,7 @@ export default function DocumentosFaltantesAnalysis({
       return b.percentualReal - a.percentualReal;
     });
 
-  const getStatusIcon = (casa: any) => {
+  const getStatusIcon = (casa: CasaFaltante) => {
     if (casa.desconsiderar) {
       return <CheckCircle className="h-4 w-4 text-green-600" />;
     }
@@ -148,7 +155,7 @@ export default function DocumentosFaltantesAnalysis({
     return <XCircle className="h-4 w-4 text-red-600" />;
   };
 
-  const getStatusText = (casa: any) => {
+  const getStatusText = (casa: CasaFaltante) => {
     if (casa.desconsiderar) return "Desconsiderado";
     if (casa.observacao) return "Com observação";
     return "Pendente";
@@ -199,8 +206,8 @@ export default function DocumentosFaltantesAnalysis({
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Gerencie observações e exceções para documentos em falta nas casas
-            de oração. Documentos marcados como "Apenas IP" são obrigatórios
-            apenas para imóveis próprios.
+            de oração. Documentos marcados como &quot;Apenas IP&quot; são
+            obrigatórios apenas para imóveis próprios.
           </p>
         </CardHeader>
         <CardContent>

@@ -6,11 +6,7 @@ import { isDocumentoObrigatorio } from "../utils/constants";
 import { DocumentosFaltantesService } from "../services/missingDocumentsService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import {
   BarChart3,
@@ -28,7 +24,6 @@ import {
   YAxis,
   ResponsiveContainer,
   Cell,
-  Legend,
 } from "recharts";
 import html2canvas from "html2canvas";
 
@@ -49,9 +44,12 @@ interface ChartDataItem {
   shortName: string;
 }
 
+interface TooltipPayload {
+  payload: ChartDataItem;
+}
+
 export default function ChartDisplay({
   gestaoData,
-  casasData,
   useExemptions = false,
 }: ChartDisplayProps) {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -80,10 +78,8 @@ export default function ChartDisplay({
 
     if (useExemptions) {
       // Use data with exemptions
-      const dataWithExemptions = documentosService.getChartDataWithExemptions(
-        gestaoData,
-        casasData
-      );
+      const dataWithExemptions =
+        documentosService.getChartDataWithExemptions(gestaoData);
 
       dataWithExemptions.forEach((item) => {
         const isObrigatorio = isDocumentoObrigatorio(item.name);
@@ -193,7 +189,13 @@ export default function ChartDisplay({
     }
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: TooltipPayload[];
+  }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const totalCasasComGestao = gestaoData.length;

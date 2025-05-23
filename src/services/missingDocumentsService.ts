@@ -192,8 +192,6 @@ export class DocumentosFaltantesService {
       const casasDesconsideradas = casasSemDocumento.filter(
         (c) => c.desconsiderar
       ).length;
-      const casasRealmenteSemDocumento =
-        casasSemDocumento.length - casasDesconsideradas;
 
       const percentualOriginal =
         totalCasasComGestao > 0
@@ -225,10 +223,7 @@ export class DocumentosFaltantesService {
   /**
    * Gets chart data considering exemptions
    */
-  getChartDataWithExemptions(
-    gestaoData: GestaoData[],
-    casasData: CasaOracao[]
-  ): Array<{
+  getChartDataWithExemptions(gestaoData: GestaoData[]): Array<{
     name: string;
     value: number;
     originalValue: number;
@@ -245,7 +240,7 @@ export class DocumentosFaltantesService {
     return tiposDocumentos
       .map((documento) => {
         // Count original occurrences
-        let originalValue = gestaoData.filter((casa) => {
+        const originalValue = gestaoData.filter((casa) => {
           const valor = casa[documento];
           return valor && valor.toString().toUpperCase().trim() === "X";
         }).length;

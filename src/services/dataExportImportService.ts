@@ -1,10 +1,12 @@
+import { CasaOracao, GestaoData, DocumentoFaltante } from "../types/churchs";
+
 export interface SystemBackup {
   version: string;
   timestamp: string;
   data: {
-    casas: any[];
-    gestao: any[];
-    documentos_faltantes: any[];
+    casas: CasaOracao[];
+    gestao: GestaoData[];
+    documentos_faltantes: DocumentoFaltante[];
   };
 }
 
@@ -16,11 +18,15 @@ export class DataExportImportService {
    */
   exportAllData(): SystemBackup {
     try {
-      const casas = this.getLocalStorageData("casas");
-      const gestao = this.getLocalStorageData("gestao");
+      const casas = this.getLocalStorageData(
+        "casas"
+      ) as unknown as CasaOracao[];
+      const gestao = this.getLocalStorageData(
+        "gestao"
+      ) as unknown as GestaoData[];
       const documentosFaltantes = this.getLocalStorageData(
         "documentos_faltantes"
-      );
+      ) as unknown as DocumentoFaltante[];
 
       const backup: SystemBackup = {
         version: this.version,
@@ -132,27 +138,37 @@ export class DataExportImportService {
       // Apply data
       if (backup.data.casas) {
         const existingCasas = mergeMode
-          ? this.getLocalStorageData("casas")
+          ? (this.getLocalStorageData("casas") as unknown as CasaOracao[])
           : [];
         const mergedCasas = mergeMode
-          ? this.mergeArrays(existingCasas, backup.data.casas, "codigo")
+          ? (this.mergeArrays(
+              existingCasas as unknown as Record<string, unknown>[],
+              backup.data.casas as unknown as Record<string, unknown>[],
+              "codigo"
+            ) as unknown as CasaOracao[])
           : backup.data.casas;
-        this.setLocalStorageData("casas", mergedCasas);
+        this.setLocalStorageData("casas", mergedCasas as unknown[]);
       }
 
       if (backup.data.gestao) {
         const existingGestao = mergeMode
-          ? this.getLocalStorageData("gestao")
+          ? (this.getLocalStorageData("gestao") as unknown as GestaoData[])
           : [];
         const mergedGestao = mergeMode
-          ? this.mergeArrays(existingGestao, backup.data.gestao, "codigo")
+          ? (this.mergeArrays(
+              existingGestao as unknown as Record<string, unknown>[],
+              backup.data.gestao as unknown as Record<string, unknown>[],
+              "codigo"
+            ) as unknown as GestaoData[])
           : backup.data.gestao;
-        this.setLocalStorageData("gestao", mergedGestao);
+        this.setLocalStorageData("gestao", mergedGestao as unknown[]);
       }
 
       if (backup.data.documentos_faltantes) {
         const existingDocs = mergeMode
-          ? this.getLocalStorageData("documentos_faltantes")
+          ? (this.getLocalStorageData(
+              "documentos_faltantes"
+            ) as unknown as DocumentoFaltante[])
           : [];
         const mergedDocs = mergeMode
           ? this.mergeDocumentosFaltantes(
@@ -160,7 +176,10 @@ export class DataExportImportService {
               backup.data.documentos_faltantes
             )
           : backup.data.documentos_faltantes;
-        this.setLocalStorageData("documentos_faltantes", mergedDocs);
+        this.setLocalStorageData(
+          "documentos_faltantes",
+          mergedDocs as unknown[]
+        );
       }
 
       return {
@@ -203,7 +222,7 @@ export class DataExportImportService {
 
   // Private helper methods
 
-  private getLocalStorageData(key: string): any[] {
+  private getLocalStorageData(key: string): unknown[] {
     try {
       if (typeof window !== "undefined") {
         const data = localStorage.getItem(key);
@@ -216,7 +235,7 @@ export class DataExportImportService {
     }
   }
 
-  private setLocalStorageData(key: string, data: any[]): void {
+  private setLocalStorageData(key: string, data: unknown[]): void {
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem(key, JSON.stringify(data));
@@ -257,13 +276,18 @@ export class DataExportImportService {
     });
   }
 
-  private validateBackup(backup: any): { isValid: boolean; error?: string } {
+  private validateBackup(backup: unknown): {
+    isValid: boolean;
+    error?: string;
+  } {
     // Check basic structure
     if (!backup || typeof backup !== "object") {
       return { isValid: false, error: "Estrutura de backup inválida" };
     }
 
-    if (!backup.version || !backup.timestamp || !backup.data) {
+    const backupObj = backup as Record<string, unknown>;
+
+    if (!backupObj.version || !backupObj.timestamp || !backupObj.data) {
       return {
         isValid: false,
         error: "Backup incompleto - campos obrigatórios ausentes",
@@ -271,12 +295,13 @@ export class DataExportImportService {
     }
 
     // Check data structure
-    if (typeof backup.data !== "object") {
+    if (typeof backupObj.data !== "object") {
       return { isValid: false, error: "Seção de dados inválida" };
     }
 
     // Validate arrays
-    const { casas, gestao, documentos_faltantes } = backup.data;
+    const dataObj = backupObj.data as Record<string, unknown>;
+    const { casas, gestao, documentos_faltantes } = dataObj;
 
     if (casas && !Array.isArray(casas)) {
       return { isValid: false, error: "Dados de casas inválidos" };
@@ -296,11 +321,11 @@ export class DataExportImportService {
     return { isValid: true };
   }
 
-  private mergeArrays(
-    existing: any[],
-    incoming: any[],
+  private mergeArrays<T extends Record<string, unknown>>(
+    existing: T[],
+    incoming: T[],
     keyField: string
-  ): any[] {
+  ): T[] {
     const merged = [...existing];
 
     incoming.forEach((item) => {
@@ -320,7 +345,10 @@ export class DataExportImportService {
     return merged;
   }
 
-  private mergeDocumentosFaltantes(existing: any[], incoming: any[]): any[] {
+  private mergeDocumentosFaltantes(
+    existing: DocumentoFaltante[],
+    incoming: DocumentoFaltante[]
+  ): DocumentoFaltante[] {
     const merged = [...existing];
 
     incoming.forEach((item) => {

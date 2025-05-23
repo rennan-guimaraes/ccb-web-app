@@ -1,15 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -30,13 +23,12 @@ import {
   AlertCircle,
   Building,
   MapPin,
-  Eye,
   EyeOff,
   Download,
   X,
   Search,
 } from "lucide-react";
-import { CasaOracao, GestaoData, DocumentoFaltante } from "../types/churchs";
+import { CasaOracao, GestaoData } from "../types/churchs";
 import { DocumentosFaltantesService } from "../services/missingDocumentsService";
 import { isDocumentoObrigatorio } from "../utils/constants";
 import { exportarRelatorioPDF } from "./reportExport";
@@ -55,6 +47,16 @@ interface DocumentoStatus {
   aplicavel: boolean; // Se o documento se aplica ao tipo de imóvel
 }
 
+// Move normalizarBoolean function outside the component to avoid recreation on every render
+const normalizarBoolean = (
+  valor: boolean | string | null | undefined
+): boolean => {
+  if (valor === null || valor === undefined) return false;
+  if (typeof valor === "boolean") return valor;
+  if (typeof valor === "string") return valor.toLowerCase() === "true";
+  return Boolean(valor);
+};
+
 export default function CasaDocumentosDetail({
   casas,
   gestaoData,
@@ -64,11 +66,11 @@ export default function CasaDocumentosDetail({
   const [observacaoEditando, setObservacaoEditando] = useState<string>("");
   const [documentoEditando, setDocumentoEditando] = useState<string>("");
   const [desconsiderarEditando, setDesconsiderarEditando] = useState(false);
-  const [mostrarObservacao, setMostrarObservacao] = useState<string>("");
   const [buscaCasa, setBuscaCasa] = useState<string>("");
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
 
-  const documentosService = new DocumentosFaltantesService();
+  // Use useMemo to create the service instance only once
+  const documentosService = useMemo(() => new DocumentosFaltantesService(), []);
 
   // Filtrar casas baseado na busca
   const casasFiltradas = casas.filter((casa) => {
@@ -93,19 +95,74 @@ export default function CasaDocumentosDetail({
     setDocumentos([]);
   };
 
-  // Function to normalize boolean values from localStorage
-  const normalizarBoolean = (valor: any): boolean => {
-    if (valor === null || valor === undefined) return false;
-    if (typeof valor === "boolean") return valor;
-    if (typeof valor === "string") return valor.toLowerCase() === "true";
-    return Boolean(valor);
-  };
+  const carregarDocumentosCasa = useCallback(
+    (codigoCasa: string) => {
+      const casa = casas.find((c) => c.codigo === codigoCasa);
+      const gestao = gestaoData.find((g) => g.codigo === codigoCasa);
+
+      if (!gestao) {
+        setDocumentos([]);
+        return;
+      }
+
+      const documentosStatus: DocumentoStatus[] = [];
+      const tiposDocumentos = Object.keys(gestao).filter(
+        (key) => key !== "codigo"
+      );
+
+      tiposDocumentos.forEach((nomeDocumento) => {
+        const presente =
+          gestao[nomeDocumento]?.toString().toUpperCase().trim() === "X";
+        const obrigatorio = isDocumentoObrigatorio(nomeDocumento);
+
+        // Verificar se o documento se aplica ao tipo de imóvel
+        const docNormalizado = nomeDocumento.toLowerCase();
+        const isDocumentoApenasProprio =
+          docNormalizado.includes("averbacao") ||
+          docNormalizado.includes("averbação") ||
+          docNormalizado.includes("escritura") ||
+          (docNormalizado.includes("compra") &&
+            docNormalizado.includes("venda"));
+
+        let aplicavel = true;
+        if (isDocumentoApenasProprio && casa?.tipo_imovel) {
+          aplicavel = casa.tipo_imovel.toUpperCase().startsWith("IP");
+        }
+
+        // Buscar informações de exceção/observação
+        const documentoFaltante = documentosService.getDocumentoFaltante(
+          codigoCasa,
+          nomeDocumento
+        );
+
+        documentosStatus.push({
+          nome: nomeDocumento,
+          presente,
+          obrigatorio,
+          observacao: documentoFaltante?.observacao,
+          desconsiderar: normalizarBoolean(documentoFaltante?.desconsiderar),
+          aplicavel,
+        });
+      });
+
+      // Ordenar: obrigatórios primeiro, depois por nome
+      documentosStatus.sort((a, b) => {
+        if (a.obrigatorio !== b.obrigatorio) {
+          return a.obrigatorio ? -1 : 1;
+        }
+        return a.nome.localeCompare(b.nome);
+      });
+
+      setDocumentos(documentosStatus);
+    },
+    [casas, gestaoData, documentosService]
+  );
 
   useEffect(() => {
     if (casaSelecionada) {
       carregarDocumentosCasa(casaSelecionada);
     }
-  }, [casaSelecionada, gestaoData]);
+  }, [casaSelecionada, gestaoData, carregarDocumentosCasa]);
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {
@@ -122,65 +179,6 @@ export default function CasaDocumentosDetail({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  const carregarDocumentosCasa = (codigoCasa: string) => {
-    const casa = casas.find((c) => c.codigo === codigoCasa);
-    const gestao = gestaoData.find((g) => g.codigo === codigoCasa);
-
-    if (!gestao) {
-      setDocumentos([]);
-      return;
-    }
-
-    const documentosStatus: DocumentoStatus[] = [];
-    const tiposDocumentos = Object.keys(gestao).filter(
-      (key) => key !== "codigo"
-    );
-
-    tiposDocumentos.forEach((nomeDocumento) => {
-      const presente =
-        gestao[nomeDocumento]?.toString().toUpperCase().trim() === "X";
-      const obrigatorio = isDocumentoObrigatorio(nomeDocumento);
-
-      // Verificar se o documento se aplica ao tipo de imóvel
-      const docNormalizado = nomeDocumento.toLowerCase();
-      const isDocumentoApenasProprio =
-        docNormalizado.includes("averbacao") ||
-        docNormalizado.includes("averbação") ||
-        docNormalizado.includes("escritura") ||
-        (docNormalizado.includes("compra") && docNormalizado.includes("venda"));
-
-      let aplicavel = true;
-      if (isDocumentoApenasProprio && casa?.tipo_imovel) {
-        aplicavel = casa.tipo_imovel.toUpperCase().startsWith("IP");
-      }
-
-      // Buscar informações de exceção/observação
-      const documentoFaltante = documentosService.getDocumentoFaltante(
-        codigoCasa,
-        nomeDocumento
-      );
-
-      documentosStatus.push({
-        nome: nomeDocumento,
-        presente,
-        obrigatorio,
-        observacao: documentoFaltante?.observacao,
-        desconsiderar: normalizarBoolean(documentoFaltante?.desconsiderar),
-        aplicavel,
-      });
-    });
-
-    // Ordenar: obrigatórios primeiro, depois por nome
-    documentosStatus.sort((a, b) => {
-      if (a.obrigatorio !== b.obrigatorio) {
-        return a.obrigatorio ? -1 : 1;
-      }
-      return a.nome.localeCompare(b.nome);
-    });
-
-    setDocumentos(documentosStatus);
-  };
 
   const casaInfo = casas.find((c) => c.codigo === casaSelecionada);
 
@@ -244,7 +242,7 @@ export default function CasaDocumentosDetail({
     return "bg-red-100 text-red-800";
   };
 
-  const contarDocumentos = () => {
+  const contarDocumentos = useMemo(() => {
     const presentes = documentos.filter((d) => d.presente).length;
     const desconsiderados = documentos.filter((d) => d.desconsiderar).length;
     const total = documentos.length;
@@ -253,9 +251,9 @@ export default function CasaDocumentosDetail({
       efetivos > 0 ? ((presentes / efetivos) * 100).toFixed(1) : "0";
 
     return { presentes, desconsiderados, total, efetivos, percentual };
-  };
+  }, [documentos]);
 
-  const stats = contarDocumentos();
+  const stats = contarDocumentos;
 
   const exportarRelatorio = async () => {
     if (!casaSelecionada || !casaInfo) {

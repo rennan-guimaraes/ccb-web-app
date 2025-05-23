@@ -5,7 +5,7 @@ import DataDisplay from "../components/dataDisplay";
 import { Church } from "lucide-react";
 
 export default function Home() {
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [refreshTrigger] = useState(0);
 
   return (
     <div className="min-h-screen bg-background">
