@@ -26,6 +26,7 @@ import {
   Loader2,
   FileX,
   Settings,
+  Search,
 } from "lucide-react";
 import ChartDisplay from "./chartDisplay";
 import DocumentosFaltantesAnalysis from "./documentosFaltantesAnalysis";
@@ -34,6 +35,7 @@ import BuscarImovelFaltante from "./buscarImovelFaltante";
 import DataExportImport from "./dataExportImport";
 import CasasImport from "./casasImport";
 import GestaoImport from "./gestaoImport";
+import CasaDocumentosDetail from "./casaDocumentosDetail";
 
 interface DataDisplayProps {
   refreshTrigger?: number;
@@ -156,7 +158,7 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
 
       <CardContent>
         <Tabs defaultValue="casas" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="casas" className="gap-2">
               <Home className="h-4 w-4" />
               Casas de Oração
@@ -170,6 +172,10 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
               <Badge variant="secondary" className="ml-2">
                 {gestaoData.length}
               </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="detalhes" className="gap-2">
+              <Search className="h-4 w-4" />
+              Detalhes da Casa
             </TabsTrigger>
             <TabsTrigger value="chart" className="gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -355,6 +361,11 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
                 </Table>
               </div>
             )}
+          </TabsContent>
+
+          {/* Detalhes da Casa Tab */}
+          <TabsContent value="detalhes" className="space-y-4">
+            <CasaDocumentosDetail casas={casas} gestaoData={gestaoData} />
           </TabsContent>
 
           {/* Chart Tab */}
