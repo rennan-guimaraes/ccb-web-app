@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { DataService } from "../services/dataService";
-import { CasaOracao, GestaoData } from "../types/casaOracao";
+import { CasaOracao, GestaoData } from "../types/churchs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";

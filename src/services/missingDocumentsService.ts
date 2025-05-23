@@ -3,7 +3,7 @@ import {
   AnaliseDocumento,
   GestaoData,
   CasaOracao,
-} from "../types/casaOracao";
+} from "../types/churchs";
 import { isDocumentoObrigatorio } from "../utils/constants";
 
 export class DocumentosFaltantesService {

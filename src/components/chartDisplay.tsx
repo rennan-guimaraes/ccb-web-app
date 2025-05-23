@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { GestaoData, CasaOracao } from "../types/casaOracao";
+import { GestaoData, CasaOracao } from "../types/churchs";
 import { isDocumentoObrigatorio } from "../utils/constants";
-import { DocumentosFaltantesService } from "../services/documentosFaltantesService";
+import { DocumentosFaltantesService } from "../services/missingDocumentsService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {

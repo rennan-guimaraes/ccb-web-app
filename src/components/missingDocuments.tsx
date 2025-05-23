@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { AnaliseDocumento, GestaoData, CasaOracao } from "../types/casaOracao";
-import { DocumentosFaltantesService } from "../services/documentosFaltantesService";
+import { AnaliseDocumento, GestaoData, CasaOracao } from "../types/churchs";
+import { DocumentosFaltantesService } from "../services/missingDocumentsService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,7 @@ import {
   Home,
   Download,
 } from "lucide-react";
-import { exportarRelatorioDocumentoPDF } from "./relatorioExport";
+import { exportarRelatorioDocumentoPDF } from "./reportExport";
 
 interface DocumentosFaltantesAnalysisProps {
   gestaoData: GestaoData[];

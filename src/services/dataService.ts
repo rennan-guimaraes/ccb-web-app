@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { CasaOracao, GestaoData } from "../types/casaOracao";
+import { CasaOracao, GestaoData } from "../types/churchs";
 import { normalizarNomeDocumento } from "../utils/constants";
 
 export class DataService {

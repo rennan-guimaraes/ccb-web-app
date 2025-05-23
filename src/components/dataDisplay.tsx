@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { DataService } from "../services/dataService";
-import { CasaOracao, GestaoData } from "../types/casaOracao";
+import { CasaOracao, GestaoData } from "../types/churchs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,15 +31,15 @@ import {
   FileDown,
 } from "lucide-react";
 import ChartDisplay from "./chartDisplay";
-import DocumentosFaltantesAnalysis from "./documentosFaltantesAnalysis";
-import AddCasaModal from "./addCasaModal";
-import BuscarImovelFaltante from "./buscarImovelFaltante";
+import DocumentosFaltantesAnalysis from "./missingDocuments";
+import AddCasaModal from "./addChurchModal";
+import BuscarImovelFaltante from "./seachChurchFaltante";
 import DataExportImport from "./dataExportImport";
-import CasasImport from "./casasImport";
-import GestaoImport from "./gestaoImport";
-import CasaDocumentosDetail from "./casaDocumentosDetail";
+import CasasImport from "./churchImport";
+import GestaoImport from "./manageImport";
+import CasaDocumentosDetail from "./churchDocumentsDetail";
 import { isDocumentoObrigatorio } from "../utils/constants";
-import { DocumentosFaltantesService } from "../services/documentosFaltantesService";
+import { DocumentosFaltantesService } from "../services/missingDocumentsService";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 

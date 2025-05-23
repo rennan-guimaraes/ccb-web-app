@@ -36,10 +36,10 @@ import {
   X,
   Search,
 } from "lucide-react";
-import { CasaOracao, GestaoData, DocumentoFaltante } from "../types/casaOracao";
-import { DocumentosFaltantesService } from "../services/documentosFaltantesService";
+import { CasaOracao, GestaoData, DocumentoFaltante } from "../types/churchs";
+import { DocumentosFaltantesService } from "../services/missingDocumentsService";
 import { isDocumentoObrigatorio } from "../utils/constants";
-import { exportarRelatorioPDF } from "./relatorioExport";
+import { exportarRelatorioPDF } from "./reportExport";
 
 interface CasaDocumentosDetailProps {
   casas: CasaOracao[];

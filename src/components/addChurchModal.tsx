@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CasaOracao } from "../types/casaOracao";
+import { CasaOracao } from "../types/churchs";
 import { DataService } from "../services/dataService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

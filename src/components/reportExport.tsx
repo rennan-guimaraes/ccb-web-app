@@ -2,7 +2,7 @@
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
-import { CasaOracao, DocumentoFaltante } from "../types/casaOracao";
+import { CasaOracao, DocumentoFaltante } from "../types/churchs";
 
 interface DocumentoStatus {
   nome: string;

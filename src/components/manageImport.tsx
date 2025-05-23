@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { DataService } from "../services/dataService";
-import { CasaOracao } from "../types/casaOracao";
+import { GestaoData } from "../types/churchs";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -23,15 +23,15 @@ import {
   Loader2,
 } from "lucide-react";
 
-interface CasasImportProps {
-  onImportSuccess?: (data: CasaOracao[]) => void;
+interface GestaoImportProps {
+  onImportSuccess?: (data: GestaoData[]) => void;
   onImportError?: (error: string) => void;
 }
 
-export default function CasasImport({
+export default function GestaoImport({
   onImportSuccess,
   onImportError,
-}: CasasImportProps) {
+}: GestaoImportProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState<{
@@ -49,21 +49,23 @@ export default function CasasImport({
     if (!file) return;
 
     setIsLoading(true);
-    setMessage({ type: "info", text: "Importando casas de oração..." });
+    setMessage({ type: "info", text: "Importando dados de gestão..." });
 
     try {
-      const casas = await dataService.importCasasFromExcel(file);
-      setMessage({
-        type: "success",
-        text: `${casas.length} casas de oração importadas com sucesso!`,
-      });
-      onImportSuccess?.(casas);
+      const gestaoData = await dataService.importGestaoFromExcel(file);
+      if (gestaoData) {
+        setMessage({
+          type: "success",
+          text: `${gestaoData.length} registros de gestão importados com sucesso!`,
+        });
+        onImportSuccess?.(gestaoData);
 
-      // Close dialog after successful import
-      setTimeout(() => {
-        setIsOpen(false);
-        setMessage(null);
-      }, 2000);
+        // Close dialog after successful import
+        setTimeout(() => {
+          setIsOpen(false);
+          setMessage(null);
+        }, 2000);
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Erro desconhecido";
@@ -106,8 +108,8 @@ export default function CasasImport({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-            Importar Casas de Oração
+            <FileSpreadsheet className="h-5 w-5 text-green-600" />
+            Importar Dados de Gestão
           </DialogTitle>
         </DialogHeader>
 
@@ -143,7 +145,7 @@ export default function CasasImport({
           {/* Instructions */}
           <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-blue-600" />
+              <Info className="h-4 w-4 text-green-600" />
               <span className="text-sm font-medium">Instruções:</span>
             </div>
 
@@ -151,38 +153,31 @@ export default function CasasImport({
               <li className="flex items-start gap-2">
                 <span className="text-xs mt-0.5">•</span>
                 <span>
-                  O arquivo deve conter as colunas:{" "}
-                  <Badge variant="secondary" className="text-xs">
-                    codigo
-                  </Badge>{" "}
-                  e{" "}
-                  <Badge variant="secondary" className="text-xs">
-                    nome
-                  </Badge>{" "}
-                  (obrigatórias)
+                  Os cabeçalhos devem estar na linha 15 (linha 14 zero-indexed)
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-xs mt-0.5">•</span>
                 <span>
-                  Colunas opcionais:{" "}
-                  <Badge variant="outline" className="text-xs">
-                    tipo_imovel
-                  </Badge>{" "}
-                  <Badge variant="outline" className="text-xs">
-                    endereco
-                  </Badge>{" "}
-                  <Badge variant="outline" className="text-xs">
-                    observacoes
-                  </Badge>{" "}
-                  <Badge variant="outline" className="text-xs">
-                    status
+                  A primeira coluna deve conter o{" "}
+                  <Badge variant="secondary" className="text-xs">
+                    código
                   </Badge>
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-xs mt-0.5">•</span>
-                <span>A primeira linha deve conter os cabeçalhos</span>
+                <span>
+                  Marque com{" "}
+                  <Badge variant="outline" className="text-xs">
+                    X
+                  </Badge>{" "}
+                  os documentos presentes
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-xs mt-0.5">•</span>
+                <span>Outras colunas serão normalizadas automaticamente</span>
               </li>
             </ul>
           </div>
