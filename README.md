@@ -33,6 +33,15 @@ O Sistema de Gestão da Igreja é uma aplicação web moderna desenvolvida para 
 - Visualização em tabela com filtros
 - Exclusão de registros
 
+### 🔍 Detalhes da Casa (NOVO!)
+
+- **Busca inteligente** de casas por código, nome ou endereço
+- **Visualização completa** dos documentos de uma casa específica
+- **Interface amigável** com busca em tempo real
+- **Resumo estatístico** visual da situação documental
+- **Edição de observações** e exceções diretamente na tela
+- **Exportação de relatórios** em PDF com design profissional
+
 ### 📊 Gestão de Documentos
 
 - Importação de planilhas de controle documental
@@ -47,6 +56,7 @@ O Sistema de Gestão da Igreja é uma aplicação web moderna desenvolvida para 
 - Análise detalhada de documentos faltantes
 - Percentuais ajustados considerando exceções
 - Filtros por tipo de documento (obrigatório/opcional)
+- **Relatórios PDF individuais** por casa de oração
 
 ### 💾 Sistema de Backup
 
@@ -72,6 +82,8 @@ O Sistema de Gestão da Igreja é uma aplicação web moderna desenvolvida para 
 - **lucide-react** - Ícones SVG otimizados
 - **react-hook-form** - Gerenciamento de formulários
 - **zod** - Validação de schemas TypeScript
+- **jsPDF** - Geração de documentos PDF
+- **html2canvas** - Captura de elementos HTML como imagem
 
 ### Armazenamento
 
@@ -93,6 +105,8 @@ src/
 │   ├── dataExportImport.tsx     # Sistema de backup
 │   ├── chartDisplay.tsx         # Gráficos e visualizações
 │   ├── documentosFaltantesAnalysis.tsx # Análise de documentos
+│   ├── casaDocumentosDetail.tsx # Detalhes de documentos por casa
+│   ├── relatorioExport.tsx      # Geração de relatórios PDF
 │   ├── addCasaModal.tsx         # Modal para adicionar casas
 │   └── buscarImovelFaltante.tsx # Busca de imóveis faltantes
 ├── services/                     # Lógica de negócio
@@ -186,20 +200,39 @@ npm run start
    - Outras colunas representam documentos
    - Células marcadas com "X" indicam documentos presentes
 
-### 2. Análise de Documentos
+### 2. Detalhes da Casa (Nova Funcionalidade!)
+
+1. **Acesse a aba "Detalhes da Casa"**
+2. **Busque a casa desejada**:
+   - Digite parte do código, nome ou endereço no campo de busca
+   - Veja os resultados aparecerem em tempo real
+   - Clique na casa desejada para selecioná-la
+3. **Visualize as informações**:
+   - Dados completos da casa selecionada
+   - Resumo estatístico visual dos documentos
+   - Lista detalhada de todos os documentos com status
+4. **Gerencie documentos**:
+   - Adicione observações para documentos faltantes
+   - Marque documentos como "desconsiderados" quando aplicável
+   - Edite observações existentes
+5. **Exporte relatório**:
+   - Clique em "Exportar PDF" para gerar um relatório profissional
+   - O arquivo será baixado automaticamente
+
+### 3. Análise de Documentos
 
 1. Navegue até "Documentos Faltantes"
 2. Visualize a análise automática de documentos ausentes
 3. Adicione observações ou marque exceções para casos específicos
 4. Use filtros para focar em documentos obrigatórios
 
-### 3. Visualização de Gráficos
+### 4. Visualização de Gráficos
 
 1. Acesse a aba "Gráfico"
 2. Ative/desative o modo de exceções
 3. Visualize percentuais de completude documental
 
-### 4. Backup e Restauração
+### 5. Backup e Restauração
 
 1. Navegue até a aba "Backup"
 2. **Para exportar**: Clique em "Exportar Dados"
@@ -207,6 +240,27 @@ npm run start
 4. Escolha entre "Mesclar" ou "Substituir" dados existentes
 
 ## 🔧 Funcionalidades Detalhadas
+
+### Sistema de Busca Inteligente
+
+A nova funcionalidade de **Detalhes da Casa** inclui um sistema de busca avançado:
+
+- **Busca em tempo real** por código, nome ou endereço
+- **Resultados limitados** a 10 itens para melhor performance
+- **Interface intuitiva** com ícones e informações visuais
+- **Seleção fácil** com clique direto no resultado desejado
+
+### Relatórios PDF Profissionais
+
+Os relatórios gerados incluem:
+
+- **Cabeçalho** com logo e informações do sistema
+- **Dados da casa** (código, nome, tipo, endereço, status)
+- **Resumo estatístico** visual com contadores coloridos
+- **Lista de documentos** separada por obrigatórios e opcionais
+- **Status visual** de cada documento (presente, faltante, desconsiderado)
+- **Observações** e notas especiais
+- **Design profissional** pronto para apresentação
 
 ### Sistema de Documentos
 
@@ -287,6 +341,7 @@ interface SystemBackup {
 - **Componentes Acessíveis**: Baseados em shadcn/ui
 - **Feedback Visual**: Estados de loading, sucesso e erro
 - **Navegação por Abas**: Organização intuitiva das funcionalidades
+- **Busca Inteligente**: Campo de busca com resultados em tempo real
 
 ### Paleta de Cores
 
@@ -308,7 +363,14 @@ interface SystemBackup {
 
 - Filtro por documentos obrigatórios
 - Busca textual por nome de documento
+- **Busca inteligente de casas** por código, nome ou endereço
 - Ordenação automática por prioridade
+
+### Relatórios
+
+- **Relatórios individuais** em PDF por casa de oração
+- **Exportação completa** do sistema em JSON
+- **Design profissional** para apresentações
 
 ## 🔒 Segurança e Privacidade
 
