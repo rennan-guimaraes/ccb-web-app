@@ -998,6 +998,7 @@ export class DataService {
 
   /**
    * Helper to parse Excel dates in various formats
+   * Prioritizes Brazilian date format (DD/MM/YYYY) to avoid MM/DD/YYYY confusion
    */
   private parseExcelDate(dateStr: string): Date | undefined {
     if (!dateStr || dateStr.trim() === "" || dateStr === "undefined") {
@@ -1018,17 +1019,7 @@ export class DataService {
         }
       }
 
-      // Try to parse as regular date string
-      const parsed = new Date(dateStr);
-      if (
-        !isNaN(parsed.getTime()) &&
-        parsed.getFullYear() > 1900 &&
-        parsed.getFullYear() < 2100
-      ) {
-        return parsed;
-      }
-
-      // Try common Brazilian date formats
+      // Try Brazilian date format (DD/MM/YYYY) first to avoid confusion with MM/DD/YYYY
       if (dateStr.includes("/")) {
         const parts = dateStr.split("/");
         if (parts.length === 3) {
@@ -1036,13 +1027,44 @@ export class DataService {
           const month = parseInt(parts[1]) - 1; // Month is 0-based
           const year = parseInt(parts[2]);
 
-          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          // Validate day, month, and year ranges
+          if (
+            !isNaN(day) &&
+            !isNaN(month) &&
+            !isNaN(year) &&
+            day >= 1 &&
+            day <= 31 &&
+            month >= 0 &&
+            month <= 11 &&
+            year >= 1900 &&
+            year <= 2100
+          ) {
             const date = new Date(year, month, day);
-            if (!isNaN(date.getTime())) {
+            if (
+              !isNaN(date.getTime()) &&
+              date.getDate() === day &&
+              date.getMonth() === month
+            ) {
               return date;
             }
           }
         }
+      }
+
+      // Try to parse as regular date string (fallback for other formats)
+      const parsed = new Date(dateStr);
+      if (
+        !isNaN(parsed.getTime()) &&
+        parsed.getFullYear() > 1900 &&
+        parsed.getFullYear() < 2100
+      ) {
+        // Log a warning when using fallback parsing to help identify format issues
+        console.warn(
+          `Used fallback date parsing for: "${dateStr}" -> ${parsed.toLocaleDateString(
+            "pt-BR"
+          )}`
+        );
+        return parsed;
       }
 
       console.warn(`Could not parse date: "${dateStr}"`);
