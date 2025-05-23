@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { DataService } from "../services/dataService";
-import { GestaoData } from "../types/churchs";
+import { GestaoVistaData } from "../types/churchs";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -21,17 +21,19 @@ import {
   XCircle,
   Info,
   Loader2,
+  Calendar,
+  Clock,
 } from "lucide-react";
 
-interface GestaoImportProps {
-  onImportSuccess?: (data: GestaoData[]) => void;
+interface GestaoVistaImportProps {
+  onImportSuccess?: (data: GestaoVistaData[]) => void;
   onImportError?: (error: string) => void;
 }
 
-export default function GestaoImport({
+export default function GestaoVistaImport({
   onImportSuccess,
   onImportError,
-}: GestaoImportProps) {
+}: GestaoVistaImportProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState<{
@@ -49,22 +51,28 @@ export default function GestaoImport({
     if (!file) return;
 
     setIsLoading(true);
-    setMessage({ type: "info", text: "Importando dados de gestão..." });
+    setMessage({ type: "info", text: "Importando dados do gestão a vista..." });
 
     try {
-      const gestaoData = await dataService.importGestaoFromExcel(file);
-      if (gestaoData) {
+      const gestaoVistaData = await dataService.importGestaoVistaFromExcel(
+        file
+      );
+      if (gestaoVistaData) {
+        const totalDocumentos = gestaoVistaData.reduce(
+          (acc, casa) => acc + casa.documentos.length,
+          0
+        );
         setMessage({
           type: "success",
-          text: `${gestaoData.length} registros de gestão importados com sucesso!`,
+          text: `${gestaoVistaData.length} casas com ${totalDocumentos} documentos importados com sucesso! Dados tradicionais gerados automaticamente.`,
         });
-        onImportSuccess?.(gestaoData);
+        onImportSuccess?.(gestaoVistaData);
 
         // Close dialog after successful import
         setTimeout(() => {
           setIsOpen(false);
           setMessage(null);
-        }, 2000);
+        }, 3000);
       }
     } catch (error) {
       const errorMessage =
@@ -102,14 +110,14 @@ export default function GestaoImport({
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Upload className="h-4 w-4" />
-          Importar Excel
+          Importar Gestão a Vista
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-green-600" />
-            Importar Dados de Gestão
+            <FileSpreadsheet className="h-5 w-5 text-purple-600" />
+            Importar Dados do Gestão a Vista
           </DialogTitle>
         </DialogHeader>
 
@@ -145,40 +153,87 @@ export default function GestaoImport({
           {/* Instructions */}
           <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium">Instruções:</span>
+              <Info className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium">
+                Formato Gestão a Vista:
+              </span>
             </div>
 
-            <ul className="text-xs text-muted-foreground space-y-1 ml-6">
+            <ul className="text-xs text-muted-foreground space-y-1.5 ml-6">
               <li className="flex items-start gap-2">
                 <span className="text-xs mt-0.5">•</span>
                 <span>
-                  Os cabeçalhos devem estar na linha 15 (linha 14 zero-indexed)
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-xs mt-0.5">•</span>
-                <span>
-                  A primeira coluna deve conter o{" "}
+                  Cabeçalho na{" "}
                   <Badge variant="secondary" className="text-xs">
-                    código
+                    linha 11
                   </Badge>
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-xs mt-0.5">•</span>
                 <span>
-                  Marque com{" "}
-                  <Badge variant="outline" className="text-xs">
-                    X
-                  </Badge>{" "}
-                  os documentos presentes
+                  Primeiro dado na{" "}
+                  <Badge variant="secondary" className="text-xs">
+                    linha 13
+                  </Badge>
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-xs mt-0.5">•</span>
-                <span>Outras colunas serão normalizadas automaticamente</span>
+                <span>Pula uma linha entre registros</span>
               </li>
+              <li className="flex items-start gap-2">
+                <span className="text-xs mt-0.5">•</span>
+                <span>
+                  <Badge variant="outline" className="text-xs">
+                    Coluna 4
+                  </Badge>
+                  : Código da casa (ex: BR 21-0332 - JARDIM DO LAGO)
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-xs mt-0.5">•</span>
+                <span>
+                  <Badge variant="outline" className="text-xs">
+                    Coluna 8
+                  </Badge>
+                  : Documentos (código + descrição)
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Calendar className="h-3 w-3 mt-0.5 text-purple-600" />
+                <span>
+                  <Badge variant="outline" className="text-xs">
+                    Coluna 14
+                  </Badge>
+                  : Data de emissão
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Clock className="h-3 w-3 mt-0.5 text-purple-600" />
+                <span>
+                  <Badge variant="outline" className="text-xs">
+                    Coluna 16
+                  </Badge>
+                  : Data de validade
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Features highlight */}
+          <div className="space-y-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-800">
+                Recursos inclusos:
+              </span>
+            </div>
+            <ul className="text-xs text-purple-700 space-y-1 ml-6">
+              <li>• Datas de emissão e validade dos documentos</li>
+              <li>• Controle detalhado por documento</li>
+              <li>• Geração automática do formato gestão tradicional</li>
+              <li>• Validação inteligente de dados</li>
             </ul>
           </div>
 

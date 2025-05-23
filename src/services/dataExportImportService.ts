@@ -1,4 +1,9 @@
-import { CasaOracao, GestaoData, DocumentoFaltante } from "../types/churchs";
+import {
+  CasaOracao,
+  GestaoData,
+  DocumentoFaltante,
+  GestaoVistaData,
+} from "../types/churchs";
 
 export interface SystemBackup {
   version: string;
@@ -6,6 +11,7 @@ export interface SystemBackup {
   data: {
     casas: CasaOracao[];
     gestao: GestaoData[];
+    gestaoVista: GestaoVistaData[];
     documentos_faltantes: DocumentoFaltante[];
   };
 }
@@ -24,6 +30,9 @@ export class DataExportImportService {
       const gestao = this.getLocalStorageData(
         "gestao"
       ) as unknown as GestaoData[];
+      const gestaoVista = this.getLocalStorageData(
+        "gestaoVista"
+      ) as unknown as GestaoVistaData[];
       const documentosFaltantes = this.getLocalStorageData(
         "documentos_faltantes"
       ) as unknown as DocumentoFaltante[];
@@ -34,6 +43,7 @@ export class DataExportImportService {
         data: {
           casas,
           gestao,
+          gestaoVista,
           documentos_faltantes: documentosFaltantes,
         },
       };
@@ -164,6 +174,22 @@ export class DataExportImportService {
         this.setLocalStorageData("gestao", mergedGestao as unknown[]);
       }
 
+      if (backup.data.gestaoVista) {
+        const existingGestaoVista = mergeMode
+          ? (this.getLocalStorageData(
+              "gestaoVista"
+            ) as unknown as GestaoVistaData[])
+          : [];
+        const mergedGestaoVista = mergeMode
+          ? (this.mergeArrays(
+              existingGestaoVista as unknown as Record<string, unknown>[],
+              backup.data.gestaoVista as unknown as Record<string, unknown>[],
+              "codigo"
+            ) as unknown as GestaoVistaData[])
+          : backup.data.gestaoVista;
+        this.setLocalStorageData("gestaoVista", mergedGestaoVista as unknown[]);
+      }
+
       if (backup.data.documentos_faltantes) {
         const existingDocs = mergeMode
           ? (this.getLocalStorageData(
@@ -207,6 +233,7 @@ export class DataExportImportService {
   getDataSummary(backup: SystemBackup): {
     casas: number;
     gestao: number;
+    gestaoVista: number;
     documentosFaltantes: number;
     timestamp: string;
     version: string;
@@ -214,6 +241,7 @@ export class DataExportImportService {
     return {
       casas: backup.data.casas?.length || 0,
       gestao: backup.data.gestao?.length || 0,
+      gestaoVista: backup.data.gestaoVista?.length || 0,
       documentosFaltantes: backup.data.documentos_faltantes?.length || 0,
       timestamp: backup.timestamp,
       version: backup.version,
@@ -250,11 +278,13 @@ export class DataExportImportService {
     if (typeof window !== "undefined") {
       localStorage.removeItem("casas");
       localStorage.removeItem("gestao");
+      localStorage.removeItem("gestaoVista");
       localStorage.removeItem("documentos_faltantes");
 
       // Reset with empty arrays
       localStorage.setItem("casas", JSON.stringify([]));
       localStorage.setItem("gestao", JSON.stringify([]));
+      localStorage.setItem("gestaoVista", JSON.stringify([]));
       localStorage.setItem("documentos_faltantes", JSON.stringify([]));
     }
   }

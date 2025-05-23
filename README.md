@@ -44,11 +44,14 @@ O Sistema de Gestão da Igreja é uma aplicação web moderna desenvolvida para 
 
 ### 📊 Gestão de Documentos
 
-- Importação de planilhas de controle documental
+- **Importação avançada**: Sistema unificado com datas de emissão e validade
+- **Consolidação inteligente**: Documentos similares (AVCB/CLCB → Bombeiros) são automaticamente agrupados
 - Análise automática de documentos faltantes
 - Sistema de exceções para documentos não aplicáveis
 - Observações personalizadas por casa/documento
 - Diferenciação entre documentos obrigatórios e opcionais
+- **Controle de vencimentos**: Alertas para documentos vencidos ou a vencer
+- **Compatibilidade**: Gera automaticamente dados no formato tradicional
 
 ### 📈 Análises e Relatórios
 
@@ -100,8 +103,9 @@ src/
 ├── components/                   # Componentes React
 │   ├── ui/                      # Componentes base (shadcn/ui)
 │   ├── dataDisplay.tsx          # Componente principal de visualização
+│   ├── gestaoConsolidada.tsx    # Sistema unificado de gestão
 │   ├── casasImport.tsx          # Importação de casas de oração
-│   ├── gestaoImport.tsx         # Importação de dados de gestão
+│   ├── gestaoVistaImport.tsx    # Importação de dados avançados
 │   ├── dataExportImport.tsx     # Sistema de backup
 │   ├── chartDisplay.tsx         # Gráficos e visualizações
 │   ├── documentosFaltantesAnalysis.tsx # Análise de documentos
@@ -200,7 +204,34 @@ npm run start
    - Outras colunas representam documentos
    - Células marcadas com "X" indicam documentos presentes
 
-### 2. Detalhes da Casa (Nova Funcionalidade!)
+### 2. Gestão de Documentos (Sistema Unificado)
+
+1. **Acesse a aba "Gestão"**
+2. **Escolha o modo de visualização**:
+   - **Modo Cards**: Visualização avançada com controle de datas
+   - **Modo Tabela**: Visualização tradicional com funcionalidades de exportação
+3. **Importe dados detalhados** (Modo Cards):
+   - Clique em "Importar Gestão a Vista"
+   - Selecione arquivo Excel no formato específico:
+     - Cabeçalho na linha 11
+     - Primeiro dado na linha 13
+     - Pula uma linha entre registros
+     - Coluna 4: Código da casa (ex: BR 21-0332 - JARDIM DO LAGO)
+     - Coluna 8: Documentos (código + descrição)
+     - Coluna 14: Data de emissão
+     - Coluna 16: Data de validade
+4. **Monitore documentos**:
+   - Visualize estatísticas de documentos vencidos e a vencer
+   - Acompanhe status visual por casa de oração
+   - Identifique rapidamente problemas de documentação
+   - **Consolidação automática**: Documentos similares são agrupados (ex: AVCB + CLCB = Bombeiros)
+5. **Use o Modo Tabela para exportação**:
+   - Os dados tradicionais são gerados automaticamente após a importação
+   - Ative o "Modo Export" para visualizar tabela completa
+   - Configure exceções e exporte para PDF
+   - Mantenha compatibilidade com análises e gráficos existentes
+
+### 3. Detalhes da Casa
 
 1. **Acesse a aba "Detalhes da Casa"**
 2. **Busque a casa desejada**:
@@ -219,20 +250,20 @@ npm run start
    - Clique em "Exportar PDF" para gerar um relatório profissional
    - O arquivo será baixado automaticamente
 
-### 3. Análise de Documentos
+### 4. Análise de Documentos
 
 1. Navegue até "Documentos Faltantes"
 2. Visualize a análise automática de documentos ausentes
 3. Adicione observações ou marque exceções para casos específicos
 4. Use filtros para focar em documentos obrigatórios
 
-### 4. Visualização de Gráficos
+### 5. Visualização de Gráficos
 
 1. Acesse a aba "Gráfico"
 2. Ative/desative o modo de exceções
 3. Visualize percentuais de completude documental
 
-### 5. Backup e Restauração
+### 6. Backup e Restauração
 
 1. Navegue até a aba "Backup"
 2. **Para exportar**: Clique em "Exportar Dados"
@@ -264,6 +295,17 @@ Os relatórios gerados incluem:
 
 ### Sistema de Documentos
 
+#### Sistema de Gestão Unificado
+
+O sistema consolidado oferece todas as funcionalidades avançadas de controle documental:
+
+- **Datas de Emissão e Validade**: Controle completo da vigência dos documentos
+- **Consolidação Inteligente**: Agrupamento automático de documentos similares (AVCB + CLCB = Bombeiros)
+- **Alertas Inteligentes**: Identificação automática de documentos vencidos ou a vencer em 30 dias
+- **Visualização Detalhada**: Interface dedicada para análise por casa de oração
+- **Compatibilidade**: Geração automática de dados no formato tradicional para análises
+- **Estatísticas Visuais**: Dashboards com indicadores de status documental
+
 #### Documentos Obrigatórios
 
 - Alvará de Funcionamento
@@ -277,7 +319,29 @@ Os relatórios gerados incluem:
 - Escritura
 - Compra e Venda
 
-O sistema automaticamente identifica e trata documentos que só se aplicam a imóveis próprios (códigos iniciados com "IP").
+#### Documentos Suportados e Consolidação Automática
+
+**Documentos Originais (consolidados automaticamente):**
+
+- **1.1** - Escritura Definitiva - Compra e Venda / Permuta → **Escritura de Compra e Venda**
+- **1** - Habite-se → **Habite-se**
+- **3** - Alvará/Licença de Funcionamento → **Alvará de Funcionamento**
+- **5** - CLCB - Certificado de Licença Corpo de Bombeiros → **Bombeiros**
+- **4** - AVCB - Auto de Vistoria do Corpo de Bombeiros → **Bombeiros**
+- **1** - Projeto Aprovado pela Prefeitura → **Projeto Aprovado**
+- **2** - Certificado de Regularização → **Certificado de Regularização**
+- **2** - Averbação da Construção na Matrícula → **Averbação de Construção**
+- **4.1** - Sentença de Usucapião → **Sentença de Usucapião**
+- **2.3** - Instrumento Particular - Cessão de Direitos Hereditários → **Cessão Hereditária Particular**
+- **5.1** - Contrato de Aluguel → **Contrato de Aluguel**
+- **3** - SCPO - Sistema de Comunicação Prévia de Obras → **SCPO**
+- **2.2** - Instrumento Particular - Cessão de Posse → **Cessão de Posse Particular**
+
+**Consolidação Inteligente:**
+
+- Documentos similares são automaticamente agrupados (ex: AVCB + CLCB = Bombeiros)
+- Sistema identifica e trata documentos que só se aplicam a imóveis próprios (códigos "IP")
+- Compatibilidade total com análises e gráficos existentes
 
 ### Sistema de Exceções
 

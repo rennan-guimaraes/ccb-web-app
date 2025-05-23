@@ -1,5 +1,12 @@
 import * as XLSX from "xlsx";
-import { CasaOracao, GestaoData } from "../types/churchs";
+import {
+  CasaOracao,
+  GestaoData,
+  DocumentoDetalhado,
+  GestaoVistaData,
+  DOCUMENTOS_GESTAO_VISTA_LIST,
+  findDocumentoByCodigo,
+} from "../types/churchs";
 import { normalizarNomeDocumento } from "../utils/constants";
 
 export class DataService {
@@ -756,5 +763,341 @@ export class DataService {
         message: `Error deleting house of prayer: ${error}`,
       };
     }
+  }
+
+  /**
+   * Loads gestao vista data from storage
+   */
+  loadGestaoVista(): GestaoVistaData[] {
+    try {
+      if (typeof window !== "undefined") {
+        const data = localStorage.getItem("gestaoVista");
+        // Parse dates from JSON
+        const parsed = data ? JSON.parse(data) : [];
+        return parsed.map((item: any) => ({
+          ...item,
+          documentos: item.documentos.map((doc: any) => ({
+            ...doc,
+            dataEmissao: doc.dataEmissao
+              ? new Date(doc.dataEmissao)
+              : undefined,
+            dataValidade: doc.dataValidade
+              ? new Date(doc.dataValidade)
+              : undefined,
+          })),
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error("Error loading gestao vista data:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Saves gestao vista data to storage
+   */
+  saveGestaoVista(data: GestaoVistaData[]): boolean {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("gestaoVista", JSON.stringify(data));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error saving gestao vista data:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Clears gestao vista data
+   */
+  clearGestaoVista(): boolean {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("gestaoVista");
+        localStorage.setItem("gestaoVista", JSON.stringify([]));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error clearing gestao vista data:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Imports gestao vista data from Excel file
+   */
+  async importGestaoVistaFromExcel(
+    file: File,
+    shouldSave: boolean = true
+  ): Promise<GestaoVistaData[] | null> {
+    try {
+      const data = await this.importGestaoVistaFromExcelInternal(file);
+
+      if (data && shouldSave) {
+        this.saveGestaoVista(data);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error importing gestao vista file:", error);
+      throw new Error(`Error importing gestao vista file: ${error}`);
+    }
+  }
+
+  /**
+   * Internal method to import gestao vista data from Excel
+   */
+  private async importGestaoVistaFromExcelInternal(
+    file: File
+  ): Promise<GestaoVistaData[]> {
+    try {
+      // Read Excel with header starting at row 11 (index 10)
+      const data = await this.readExcelSafe(file, 10);
+
+      if (!data || data.length === 0) {
+        throw new Error("Excel file is empty or invalid");
+      }
+
+      console.log("Raw Excel data:", data);
+
+      const gestaoVistaData: GestaoVistaData[] = [];
+      const casasProcessadas = new Map<string, GestaoVistaData>();
+
+      // Process data starting from row 13 (index 2 after header row 11)
+      for (let i = 2; i < data.length; i += 2) {
+        // Pula uma linha entre registros
+        const row = data[i] as unknown[];
+
+        if (!row || row.length === 0) {
+          console.log(`Row ${i + 1} is empty, skipping`);
+          continue;
+        }
+
+        try {
+          // Extract codigo da casa from column 4 (index 3)
+          const codigoCompleto = row[3]?.toString().trim();
+          if (!codigoCompleto) {
+            console.log(`Row ${i + 1}: No code found in column 4, skipping`);
+            continue;
+          }
+
+          // Extract the code part (before the " - ")
+          const codigo = codigoCompleto.split(" - ")[0]?.trim();
+          if (!codigo) {
+            console.log(
+              `Row ${
+                i + 1
+              }: Could not extract code from "${codigoCompleto}", skipping`
+            );
+            continue;
+          }
+
+          // Extract document info from column 8 (index 7)
+          const documentoCompleto = row[7]?.toString().trim();
+          if (!documentoCompleto) {
+            console.log(
+              `Row ${i + 1}: No document found in column 8, skipping`
+            );
+            continue;
+          }
+
+          // Parse document code and name
+          const documentoParts = documentoCompleto.split(" ", 2);
+          const codigoDocumento = documentoParts[0]?.trim();
+          const nomeDocumento = documentoCompleto
+            .substring(codigoDocumento.length)
+            .trim();
+
+          if (!codigoDocumento || !nomeDocumento) {
+            console.log(
+              `Row ${
+                i + 1
+              }: Could not parse document "${documentoCompleto}", skipping`
+            );
+            continue;
+          }
+
+          // Get or create casa data
+          let casaData = casasProcessadas.get(codigo);
+          if (!casaData) {
+            casaData = {
+              codigo,
+              documentos: [],
+            };
+            casasProcessadas.set(codigo, casaData);
+          }
+
+          // Extract dates from columns 14 and 16 (indexes 13 and 15)
+          const dataEmissaoStr = row[13]?.toString().trim();
+          const dataValidadeStr = row[15]?.toString().trim();
+
+          let dataEmissao: Date | undefined;
+          let dataValidade: Date | undefined;
+
+          // Parse dates - support multiple formats
+          if (dataEmissaoStr && dataEmissaoStr !== "undefined") {
+            dataEmissao = this.parseExcelDate(dataEmissaoStr);
+          }
+
+          if (dataValidadeStr && dataValidadeStr !== "undefined") {
+            dataValidade = this.parseExcelDate(dataValidadeStr);
+          }
+
+          // Create document object
+          const documento: DocumentoDetalhado = {
+            codigo,
+            codigoDocumento: findDocumentoByCodigo(
+              codigoDocumento,
+              nomeDocumento
+            ),
+            nomeDocumento,
+            dataEmissao,
+            dataValidade,
+            presente: true, // If it's in the file, it's present
+          };
+
+          casaData.documentos.push(documento);
+
+          console.log(
+            `Processed document for casa ${codigo}: ${nomeDocumento}`
+          );
+        } catch (error) {
+          console.error(`Error processing row ${i + 1}:`, error);
+        }
+      }
+
+      // Convert map to array
+      gestaoVistaData.push(...casasProcessadas.values());
+
+      if (gestaoVistaData.length === 0) {
+        throw new Error("No valid gestao vista data found in file");
+      }
+
+      console.log(
+        `Total casas with documents imported: ${gestaoVistaData.length}`
+      );
+
+      // Log summary
+      gestaoVistaData.forEach((casa) => {
+        console.log(`Casa ${casa.codigo}: ${casa.documentos.length} documents`);
+      });
+
+      return gestaoVistaData;
+    } catch (error) {
+      console.error("Error importing gestao vista file:", error);
+      throw new Error(`Error importing gestao vista file: ${error}`);
+    }
+  }
+
+  /**
+   * Helper to parse Excel dates in various formats
+   */
+  private parseExcelDate(dateStr: string): Date | undefined {
+    if (!dateStr || dateStr.trim() === "" || dateStr === "undefined") {
+      return undefined;
+    }
+
+    try {
+      // Try to parse as Excel serial number first
+      const asNumber = parseFloat(dateStr);
+      if (!isNaN(asNumber) && asNumber > 0) {
+        // Excel serial date (days since 1900-01-01, with some adjustments)
+        const excelEpoch = new Date(1900, 0, 1);
+        const date = new Date(
+          excelEpoch.getTime() + (asNumber - 1) * 24 * 60 * 60 * 1000
+        );
+        if (date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+          return date;
+        }
+      }
+
+      // Try to parse as regular date string
+      const parsed = new Date(dateStr);
+      if (
+        !isNaN(parsed.getTime()) &&
+        parsed.getFullYear() > 1900 &&
+        parsed.getFullYear() < 2100
+      ) {
+        return parsed;
+      }
+
+      // Try common Brazilian date formats
+      if (dateStr.includes("/")) {
+        const parts = dateStr.split("/");
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const month = parseInt(parts[1]) - 1; // Month is 0-based
+          const year = parseInt(parts[2]);
+
+          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+            const date = new Date(year, month, day);
+            if (!isNaN(date.getTime())) {
+              return date;
+            }
+          }
+        }
+      }
+
+      console.warn(`Could not parse date: "${dateStr}"`);
+      return undefined;
+    } catch (error) {
+      console.warn(`Error parsing date "${dateStr}":`, error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Generate traditional gestao data from gestao vista data for compatibility
+   */
+  generateGestaoFromGestaoVista(
+    gestaoVistaData: GestaoVistaData[]
+  ): GestaoData[] {
+    const gestaoData: GestaoData[] = [];
+
+    // Get all unique normalized document names
+    const allDocuments = new Set<string>();
+    gestaoVistaData.forEach((casa) => {
+      casa.documentos.forEach((doc) => {
+        // Normalize document name for consistency
+        const normalizedName = normalizarNomeDocumento(doc.nomeDocumento);
+        allDocuments.add(normalizedName);
+      });
+    });
+
+    // Convert each casa to gestao format
+    gestaoVistaData.forEach((casa) => {
+      const gestaoRow: GestaoData = {
+        codigo: casa.codigo,
+      };
+
+      // Group documents by normalized name and mark as present
+      const documentsPresent = new Set<string>();
+      casa.documentos.forEach((doc) => {
+        if (doc.presente) {
+          const normalizedName = normalizarNomeDocumento(doc.nomeDocumento);
+          documentsPresent.add(normalizedName);
+        }
+      });
+
+      // Mark present documents with 'X'
+      documentsPresent.forEach((docName) => {
+        gestaoRow[docName] = "X";
+      });
+
+      // Set empty string for missing documents
+      allDocuments.forEach((docName) => {
+        if (!(docName in gestaoRow)) {
+          gestaoRow[docName] = "";
+        }
+      });
+
+      gestaoData.push(gestaoRow);
+    });
+
+    return gestaoData;
   }
 }

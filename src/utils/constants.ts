@@ -7,28 +7,54 @@ export const DOCUMENTOS: Record<string, string> = {
   // Documentos de Propriedade
   "Escritura Definitiva - Compra e Venda/Permuta":
     "Escritura de Compra e Venda",
+  "ESCRITURA DEFINITIVA - COMPRA E VENDA / PERMUTA":
+    "Escritura de Compra e Venda",
+  "Escritura Definitiva": "Escritura de Compra e Venda",
+  "Compra e Venda": "Escritura de Compra e Venda",
   "Escritura Pública - Inventário/Arrolamento": "Escritura de Inventário",
   "Escritura de Usucapião": "Escritura de Usucapião",
   "Sentença de Usucapião": "Sentença de Usucapião",
+  "SENTENÇA DE USUCAPIÃO": "Sentença de Usucapião",
   "Formal de Partilha/Carta de Adjudicação": "Formal de Partilha",
 
   // Documentos de Construção/Funcionamento
   "Habite-se": "Habite-se",
+  "HABITE-SE": "Habite-se",
   "Projeto Aprovado Pela Prefeitura": "Projeto Aprovado",
+  "PROJETO APROVADO PELA PREFEITURA": "Projeto Aprovado",
+  "Projeto Aprovado": "Projeto Aprovado",
   "Alvará de Funcionamento": "Alvará de Funcionamento",
+  "ALVARÁ/LICENÇA DE FUNCIONAMENTO": "Alvará de Funcionamento",
+  "Alvará/Licença de Funcionamento": "Alvará de Funcionamento",
+  "Licença de Funcionamento": "Alvará de Funcionamento",
   "Averbação da Construção na Matricula": "Averbação de Construção",
+  "AVERBAÇÃO DA CONSTRUÇÃO NA MATRICULA": "Averbação de Construção",
+  "Averbação da Construção": "Averbação de Construção",
+  Averbação: "Averbação de Construção",
 
   // Documentos de Segurança
   "AVCB - Auto de Vistoria do Corpo de Bombeiros": "Bombeiros",
   "CLCB - Certificado de Licença Corpo de Bombeiros": "Bombeiros",
+  "Auto de Vistoria do Corpo de Bombeiros": "Bombeiros",
+  "Certificado de Licença Corpo de Bombeiros": "Bombeiros",
+  AVCB: "Bombeiros",
+  CLCB: "Bombeiros",
   "SCPO - Sistema de Comunicação Prévia de Obras": "SCPO",
+  "SCPO - SISTEMA DE COMUNICAÇÃO PRÉVIA DE OBRAS (MINISTÉRIO DO TRABALHO)":
+    "SCPO",
+  "Sistema de Comunicação Prévia de Obras": "SCPO",
 
   // Instrumentos Particulares
   "Instrumento Particular - Cessão de Direitos de Compra e Venda":
     "Cessão de Direitos Particular",
   "Instrumento Particular - Cessão de Posse": "Cessão de Posse Particular",
+  "INSTRUMENTO PARTICULAR - CESSÃO DE POSSE": "Cessão de Posse Particular",
+  "Cessão de Posse": "Cessão de Posse Particular",
   "Instrumento Particular - Cessão de Direitos Hereditários":
     "Cessão Hereditária Particular",
+  "INSTRUMENTO PARTICULAR - CESSÃO DE DIREITOS HEREDITÁRIOS":
+    "Cessão Hereditária Particular",
+  "Cessão de Direitos Hereditários": "Cessão Hereditária Particular",
   "Instrumento Particular - Doação": "Doação Particular",
   "Instrumento Particular - Promessa de Compra e Venda":
     "Promessa de Compra Particular",
@@ -48,6 +74,9 @@ export const DOCUMENTOS: Record<string, string> = {
   "Licença de Ocupação": "Licença de Ocupação",
   "Regularização Fundiária": "REURB",
   "Contrato de Aluguel": "Contrato de Aluguel",
+  "CONTRATO DE ALUGUEL": "Contrato de Aluguel",
+  "Certificado de Regularização": "Certificado de Regularização",
+  "CERTIFICADO DE REGULARIZAÇÃO": "Certificado de Regularização",
 
   // Documentos pessoais (mantendo compatibilidade com versão anterior)
   certidao: "certidao_nascimento",
