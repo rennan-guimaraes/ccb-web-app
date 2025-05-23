@@ -34,7 +34,9 @@ import {
   Save,
   FileX,
   Home,
+  Download,
 } from "lucide-react";
+import { exportarRelatorioDocumentoPDF } from "./relatorioExport";
 
 interface DocumentosFaltantesAnalysisProps {
   gestaoData: GestaoData[];
@@ -103,6 +105,18 @@ export default function DocumentosFaltantesAnalysis({
       setSelectedCasa(null);
       setObservacao("");
       setDesconsiderar(false);
+    }
+  };
+
+  const handleExportDocumento = async (analise: AnaliseDocumento) => {
+    try {
+      await exportarRelatorioDocumentoPDF({
+        analiseDocumento: analise,
+        casasData,
+      });
+    } catch (error) {
+      console.error("Erro ao exportar relatório:", error);
+      alert("Erro ao gerar o relatório. Tente novamente.");
     }
   };
 
@@ -356,6 +370,19 @@ export default function DocumentosFaltantesAnalysis({
                           {analise.percentualReal.toFixed(1)}%
                         </p>
                       </div>
+                    </div>
+
+                    {/* Export Button */}
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={() => handleExportDocumento(analise)}
+                        className="gap-2"
+                        variant="outline"
+                      >
+                        <Download className="h-4 w-4" />
+                        Exportar PDF
+                      </Button>
                     </div>
 
                     {/* Missing Houses List */}
