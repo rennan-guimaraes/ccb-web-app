@@ -32,6 +32,8 @@ import DocumentosFaltantesAnalysis from "./documentosFaltantesAnalysis";
 import AddCasaModal from "./addCasaModal";
 import BuscarImovelFaltante from "./buscarImovelFaltante";
 import DataExportImport from "./dataExportImport";
+import CasasImport from "./casasImport";
+import GestaoImport from "./gestaoImport";
 
 interface DataDisplayProps {
   refreshTrigger?: number;
@@ -188,6 +190,10 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Casas de Oração</h3>
               <div className="flex items-center gap-2">
+                <CasasImport
+                  onImportSuccess={() => loadData()}
+                  onImportError={(error) => console.error(error)}
+                />
                 <AddCasaModal onCasaAdded={handleCasaAdded} />
                 <BuscarImovelFaltante
                   gestaoData={gestaoData}
@@ -279,17 +285,23 @@ export default function DataDisplay({ refreshTrigger }: DataDisplayProps) {
           <TabsContent value="gestao" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Dados de Gestão</h3>
-              {gestaoData.length > 0 && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => clearData("gestao")}
-                  className="gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Limpar Dados
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <GestaoImport
+                  onImportSuccess={() => loadData()}
+                  onImportError={(error) => console.error(error)}
+                />
+                {gestaoData.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => clearData("gestao")}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Limpar Dados
+                  </Button>
+                )}
+              </div>
             </div>
 
             {gestaoData.length === 0 ? (

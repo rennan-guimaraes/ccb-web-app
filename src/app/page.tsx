@@ -1,24 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import FileImport from "../components/fileImport";
 import DataDisplay from "../components/dataDisplay";
-import { CasaOracao, GestaoData } from "../types/casaOracao";
 import { Church } from "lucide-react";
 
 export default function Home() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  const handleImportSuccess = (data: CasaOracao[] | GestaoData[]) => {
-    console.log("Data imported successfully:", data);
-    // Trigger refresh of data display
-    setRefreshTrigger((prev) => prev + 1);
-  };
-
-  const handleImportError = (error: string) => {
-    console.error("Import error:", error);
-    // Could show a toast notification here
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,19 +21,13 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Importação e gerenciamento de dados das casas de oração e gestão
-            administrativa
+            Gerenciamento completo de dados das casas de oração e gestão
+            administrativa com funcionalidades de importação, backup e análise
           </p>
         </div>
 
         {/* Main Content */}
         <div className="space-y-8">
-          {/* File Import Section */}
-          <FileImport
-            onImportSuccess={handleImportSuccess}
-            onImportError={handleImportError}
-          />
-
           {/* Data Display Section */}
           <DataDisplay refreshTrigger={refreshTrigger} />
         </div>
