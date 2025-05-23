@@ -443,6 +443,15 @@ export default function GestaoConsolidada({
     return "bg-red-500";
   };
 
+  // Helper function to compress canvas image
+  const compressCanvasImage = (
+    canvas: HTMLCanvasElement,
+    quality: number = 0.7
+  ): string => {
+    // Convert to JPEG with compression for smaller file size
+    return canvas.toDataURL("image/jpeg", quality);
+  };
+
   const exportToPDF = async () => {
     const tableElement = document.getElementById("export-table-view");
     if (!tableElement) {
@@ -465,11 +474,14 @@ export default function GestaoConsolidada({
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const canvas = await html2canvas(tableElement, {
-        scale: 2,
+        scale: 1,
         useCORS: true,
         backgroundColor: "#ffffff",
         width: tableElement.scrollWidth,
         height: tableElement.scrollHeight,
+        logging: false,
+        imageTimeout: 15000,
+        removeContainer: true,
       });
 
       // Restaurar estado original do elemento
@@ -480,7 +492,7 @@ export default function GestaoConsolidada({
         tableElement.style.top = "";
       }
 
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = compressCanvasImage(canvas);
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
@@ -536,7 +548,7 @@ export default function GestaoConsolidada({
         scaledHeight,
       });
 
-      pdf.addImage(imgData, "PNG", imgX, imgY, scaledWidth, scaledHeight);
+      pdf.addImage(imgData, "JPEG", imgX, imgY, scaledWidth, scaledHeight);
 
       const fileName = `tabela_gestao_vista_${new Date()
         .toISOString()

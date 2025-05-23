@@ -421,34 +421,38 @@ export default function ChartDisplay({
           </ChartContainer>
 
           {/* Detailed Data Table */}
-          <div className="mt-6">
-            <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          {/* Detailed Data Table */}
+          <div className="mt-8 mb-4">
+            <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <FileText className="h-5 w-5" />
               Detalhamento por Documento
             </h4>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-6">
               {/* Mandatory Documents */}
-              <div className="space-y-2">
-                <h5 className="font-medium text-destructive flex items-center gap-2">
+              <div className="space-y-3">
+                <h5 className="font-medium text-destructive flex items-center gap-2 mb-3">
                   <AlertTriangle className="h-4 w-4" />
                   Documentos Obrigatórios
                 </h5>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {chartData
                     .filter((item) => item.isObrigatorio)
                     .map((item, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 border border-red-200 bg-red-50 rounded text-sm"
+                        className="flex items-center justify-between p-3 border border-red-200 bg-red-50 rounded-md text-sm min-h-[44px]"
                       >
-                        <span className="font-medium truncate mr-2 text-red-900">
+                        <span className="font-medium text-red-900 mr-3 leading-tight">
                           {item.name}
                         </span>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <Badge variant="destructive" className="text-xs">
+                          <Badge
+                            variant="destructive"
+                            className="text-xs min-w-[32px] justify-center"
+                          >
                             {item.value}
                           </Badge>
-                          <span className="text-red-700 text-xs">
+                          <span className="text-red-700 text-xs font-medium min-w-[50px] text-right">
                             ({item.percentage.toFixed(1)}%)
                           </span>
                         </div>
@@ -458,27 +462,30 @@ export default function ChartDisplay({
               </div>
 
               {/* Optional Documents */}
-              <div className="space-y-2">
-                <h5 className="font-medium text-primary flex items-center gap-2">
+              <div className="space-y-3">
+                <h5 className="font-medium text-primary flex items-center gap-2 mb-3">
                   <FileText className="h-4 w-4" />
                   Documentos Opcionais
                 </h5>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {chartData
                     .filter((item) => !item.isObrigatorio)
                     .map((item, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 border border-blue-200 bg-blue-50 rounded text-sm"
+                        className="flex items-center justify-between p-3 border border-blue-200 bg-blue-50 rounded-md text-sm min-h-[44px]"
                       >
-                        <span className="font-medium truncate mr-2 text-blue-900">
+                        <span className="font-medium text-blue-900 mr-3 leading-tight">
                           {item.name}
                         </span>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs min-w-[32px] justify-center"
+                          >
                             {item.value}
                           </Badge>
-                          <span className="text-blue-700 text-xs">
+                          <span className="text-blue-700 text-xs font-medium min-w-[50px] text-right">
                             ({item.percentage.toFixed(1)}%)
                           </span>
                         </div>

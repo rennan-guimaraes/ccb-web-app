@@ -37,6 +37,14 @@ export const exportarRelatorioPDF = async ({
   documentos,
   stats,
 }: RelatorioExportProps) => {
+  // Helper function to compress canvas image
+  const compressCanvasImage = (
+    canvas: HTMLCanvasElement,
+    quality: number = 0.7
+  ): string => {
+    return canvas.toDataURL("image/jpeg", quality);
+  };
+
   // Criar elemento temporário para renderizar o relatório
   const reportElement = document.createElement("div");
   reportElement.style.position = "absolute";
@@ -251,14 +259,19 @@ export const exportarRelatorioPDF = async ({
     // Capturar o elemento como canvas
     const canvas = await html2canvas(reportElement, {
       backgroundColor: "#ffffff",
-      scale: 2,
+      scale: 1,
       useCORS: true,
       allowTaint: true,
+      logging: false,
+      imageTimeout: 15000,
+      removeContainer: true,
     });
+
+    // Comprimir a imagem do canvas
+    const compressedImgData = compressCanvasImage(canvas);
 
     // Criar PDF
     const pdf = new jsPDF("p", "mm", "a4");
-    const imgData = canvas.toDataURL("image/png");
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -270,14 +283,21 @@ export const exportarRelatorioPDF = async ({
     let position = 10;
 
     // Adicionar primeira página
-    pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+    pdf.addImage(compressedImgData, "JPEG", 10, position, imgWidth, imgHeight);
     heightLeft -= pdfHeight - 20;
 
     // Adicionar páginas adicionais se necessário
     while (heightLeft >= 0) {
       position = heightLeft - imgHeight + 10;
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+      pdf.addImage(
+        compressedImgData,
+        "JPEG",
+        10,
+        position,
+        imgWidth,
+        imgHeight
+      );
       heightLeft -= pdfHeight - 20;
     }
 
@@ -314,6 +334,14 @@ export const exportarRelatorioDocumentoPDF = async ({
   };
   casasData: CasaOracao[];
 }) => {
+  // Helper function to compress canvas image
+  const compressCanvasImage = (
+    canvas: HTMLCanvasElement,
+    quality: number = 0.7
+  ): string => {
+    return canvas.toDataURL("image/jpeg", quality);
+  };
+
   // Criar elemento temporário para renderizar o relatório
   const reportElement = document.createElement("div");
   reportElement.style.position = "absolute";
@@ -509,14 +537,19 @@ export const exportarRelatorioDocumentoPDF = async ({
     // Capturar o elemento como canvas
     const canvas = await html2canvas(reportElement, {
       backgroundColor: "#ffffff",
-      scale: 2,
+      scale: 1,
       useCORS: true,
       allowTaint: true,
+      logging: false,
+      imageTimeout: 15000,
+      removeContainer: true,
     });
+
+    // Comprimir a imagem do canvas
+    const compressedImgData = compressCanvasImage(canvas);
 
     // Criar PDF
     const pdf = new jsPDF("p", "mm", "a4");
-    const imgData = canvas.toDataURL("image/png");
 
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -528,14 +561,21 @@ export const exportarRelatorioDocumentoPDF = async ({
     let position = 10;
 
     // Adicionar primeira página
-    pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+    pdf.addImage(compressedImgData, "JPEG", 10, position, imgWidth, imgHeight);
     heightLeft -= pdfHeight - 20;
 
     // Adicionar páginas adicionais se necessário
     while (heightLeft >= 0) {
       position = heightLeft - imgHeight + 10;
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+      pdf.addImage(
+        compressedImgData,
+        "JPEG",
+        10,
+        position,
+        imgWidth,
+        imgHeight
+      );
       heightLeft -= pdfHeight - 20;
     }
 

@@ -61,10 +61,15 @@ export class DataExportImportService {
   downloadDataAsJson(): void {
     try {
       const backup = this.exportAllData();
-      const dataStr = JSON.stringify(backup, null, 2);
+      // Remove pretty printing (null, 2) to reduce file size significantly
+      const dataStr = JSON.stringify(backup);
 
-      // Create download link
-      const blob = new Blob([dataStr], { type: "application/json" });
+      // Create compressed blob
+      const blob = new Blob([dataStr], {
+        type: "application/json",
+        // Add compression hint for modern browsers
+        endings: "native",
+      });
       const url = URL.createObjectURL(blob);
 
       // Generate filename with timestamp

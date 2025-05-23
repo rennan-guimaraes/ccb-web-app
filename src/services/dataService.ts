@@ -13,6 +13,7 @@ export class DataService {
   private readonly dataDir: string;
   private readonly gestaoFile: string;
   private readonly casasFile: string;
+  private readonly isDebugMode: boolean = false; // Control debug logging
 
   constructor(dataDir: string = "data") {
     this.dataDir = dataDir;
@@ -21,6 +22,12 @@ export class DataService {
 
     // Initialize data directory and files if needed
     this.initializeDataFiles();
+  }
+
+  private debugLog(...args: any[]): void {
+    if (this.isDebugMode) {
+      console.log(...args);
+    }
   }
 
   private initializeDataFiles(): void {
@@ -134,7 +141,7 @@ export class DataService {
   }
 
   /**
-   * Safely reads an Excel file
+   * Optimized Excel file reader
    */
   private readExcelSafe(
     file: File,
@@ -146,29 +153,27 @@ export class DataService {
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: "array" });
+          const workbook = XLSX.read(data, {
+            type: "array",
+            cellDates: true, // Parse dates automatically
+            cellNF: false, // Don't parse number formats
+            cellText: false, // Don't convert to text
+          });
 
           // Get the first worksheet
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
 
-          // Convert to JSON with header row specified and force reading more columns
+          // Convert to JSON with optimized options
           const jsonData = XLSX.utils.sheet_to_json(worksheet, {
             header: 1,
             range: headerRow,
-            defval: null, // Fill empty cells with null instead of skipping
-            blankrows: true, // Include blank rows
+            defval: null,
+            blankrows: false, // Skip blank rows for performance
+            raw: false, // Use formatted values
           });
 
-          // Debug log to see what we're actually reading
-          console.log(`Excel file read - total rows: ${jsonData.length}`);
-          if (jsonData.length > 0) {
-            console.log(
-              `First row length: ${(jsonData[0] as unknown[])?.length}`
-            );
-            console.log(`First row content:`, jsonData[0]);
-          }
-
+          this.debugLog(`Excel file read - total rows: ${jsonData.length}`);
           resolve(jsonData as unknown[][]);
         } catch (error) {
           reject(new Error(`Error reading Excel file: ${error}`));
@@ -205,7 +210,7 @@ export class DataService {
   }
 
   /**
-   * Internal function to import management data from Excel
+   * Optimized internal function to import management data from Excel
    */
   private async importGestaoFromExcelInternal(
     file: File
@@ -222,9 +227,12 @@ export class DataService {
       const headers = rawData[0] as string[];
       const dataRows = rawData.slice(1);
 
-      // Clean headers - remove empty columns
-      const cleanHeaders: string[] = [];
-      const validColumnIndices: number[] = [];
+      // Optimize header processing
+      const validColumns: Array<{
+        index: number;
+        name: string;
+        normalized?: string;
+      }> = [];
 
       headers.forEach((header, index) => {
         if (
@@ -232,81 +240,91 @@ export class DataService {
           header.toString().trim() &&
           !header.toString().startsWith("Unnamed")
         ) {
-          cleanHeaders.push(header.toString().trim());
-          validColumnIndices.push(index);
+          const headerStr = header.toString().trim();
+          const column: { index: number; name: string; normalized?: string } = {
+            index,
+            name: headerStr,
+          };
+
+          if (index === 0 && !headerStr.toLowerCase().includes("codigo")) {
+            column.normalized = "codigo";
+          } else if (index > 0) {
+            try {
+              column.normalized = normalizarNomeDocumento(headerStr);
+            } catch (error) {
+              column.normalized = headerStr
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "_");
+            }
+          }
+
+          validColumns.push(column);
         }
       });
 
-      if (cleanHeaders.length === 0) {
+      if (validColumns.length === 0) {
         throw new Error("No valid columns found in file");
       }
 
-      // Ensure first column is "codigo"
-      if (!cleanHeaders[0].toLowerCase().includes("codigo")) {
-        cleanHeaders[0] = "codigo";
-      }
-
-      // Process data rows - collect all values first, then combine duplicates (following Python logic)
+      // Process data rows with optimized logic
       const processedData: GestaoData[] = [];
+      const rowDataMap = new Map<string, Record<string, string>>();
 
-      dataRows.forEach((row) => {
-        if (!row || row.length === 0) return;
+      // Batch process rows for better performance
+      const batchSize = 100;
+      for (let i = 0; i < dataRows.length; i += batchSize) {
+        const batch = dataRows.slice(i, i + batchSize);
 
-        const tempRowData: Record<string, string> = {};
+        batch.forEach((row) => {
+          if (!row || row.length === 0) return;
 
-        // Step 1: Collect all values with normalized column names
-        cleanHeaders.forEach((header, headerIndex) => {
-          const colIndex = validColumnIndices[headerIndex];
-          const value = row[colIndex];
+          const tempRowData: Record<string, string> = {};
+          let codigo = "";
 
-          if (headerIndex === 0) {
-            // Handle codigo column
-            tempRowData["codigo"] = value ? value.toString().trim() : "";
-          } else {
-            try {
-              const normalized = normalizarNomeDocumento(header);
-              const stringValue = value ? value.toString().trim() : "";
+          // Process each valid column
+          validColumns.forEach((column) => {
+            const value = row[column.index];
+            const stringValue = value ? value.toString().trim() : "";
 
-              // Check if this normalized name already exists
-              if (tempRowData[normalized] !== undefined) {
-                // Combine values: "X" if any value is "X", otherwise keep first non-empty value
-                const existingValue = tempRowData[normalized]
-                  .toUpperCase()
-                  .trim();
+            if (column.index === 0) {
+              codigo = stringValue;
+              tempRowData["codigo"] = codigo;
+            } else if (column.normalized && stringValue) {
+              const normalized = column.normalized;
+
+              if (tempRowData[normalized]) {
+                // Combine values efficiently
+                const existing = tempRowData[normalized].toUpperCase().trim();
                 const newValue = stringValue.toUpperCase().trim();
 
-                if (existingValue === "X" || newValue === "X") {
-                  tempRowData[normalized] = "X";
-                } else if (!existingValue && stringValue) {
-                  tempRowData[normalized] = stringValue;
-                }
+                tempRowData[normalized] =
+                  existing === "X" || newValue === "X"
+                    ? "X"
+                    : existing || stringValue;
               } else {
                 tempRowData[normalized] = stringValue;
               }
-            } catch (error) {
-              console.error(`Error normalizing column ${header}:`, error);
-              const fallbackName = header
-                .toLowerCase()
-                .replace(/[^a-z0-9]/g, "_");
-              tempRowData[fallbackName] = value ? value.toString().trim() : "";
             }
+          });
+
+          // Only add rows with valid codigo
+          if (codigo) {
+            rowDataMap.set(codigo, tempRowData);
           }
         });
+      }
 
-        // Step 2: Create final row object - keep ALL columns (like Python)
-        const finalRowData: GestaoData = { codigo: tempRowData.codigo || "" };
+      // Convert map to array
+      rowDataMap.forEach((rowData) => {
+        const finalRowData: GestaoData = { codigo: rowData.codigo || "" };
 
-        Object.entries(tempRowData).forEach(([key, value]) => {
+        Object.entries(rowData).forEach(([key, value]) => {
           if (key !== "codigo") {
-            // Keep all columns, even empty ones (following Python behavior)
             finalRowData[key] = value ? value.trim() : "";
           }
         });
 
-        // Only add rows with valid codigo
-        if (finalRowData.codigo) {
-          processedData.push(finalRowData);
-        }
+        processedData.push(finalRowData);
       });
 
       return processedData;
@@ -327,7 +345,7 @@ export class DataService {
         throw new Error("File must be Excel format (.xlsx or .xls)");
       }
 
-      console.log(`Trying to read file: ${file.name}`);
+      this.debugLog(`Trying to read file: ${file.name}`);
 
       // Read Excel file starting from row 15 (Python header=14 means row 14 is header, data starts at row 15)
       const rawData = await this.readExcelSafe(file, 15);
@@ -338,7 +356,7 @@ export class DataService {
         );
       }
 
-      // Remove completely empty rows
+      // Remove completely empty rows efficiently
       const nonEmptyRows = rawData.filter(
         (row) =>
           row &&
@@ -369,14 +387,11 @@ export class DataService {
       // Remove the first row (now used as headers) and get data rows
       const dataRows = nonEmptyRows.slice(1);
 
-      // Remove empty columns and rows (following Python logic)
+      // Optimize column filtering
       const validColumnIndices: number[] = [];
       const removedColumns: string[] = [];
 
       columnNames.forEach((columnName, colIndex) => {
-        // Keep column if:
-        // 1. Header has a meaningful name (not empty or generic)
-        // 2. OR column has any data in the rows
         const hasValidHeader =
           columnName &&
           !columnName.startsWith("Column_") &&
@@ -396,10 +411,10 @@ export class DataService {
         }
       });
 
-      console.log(`Removed columns: ${removedColumns.join(", ")}`);
-      console.log(`Valid column indices: ${validColumnIndices.join(", ")}`);
+      this.debugLog(`Removed columns: ${removedColumns.join(", ")}`);
+      this.debugLog(`Valid column indices: ${validColumnIndices.join(", ")}`);
 
-      // Filter columns to keep only valid ones
+      // Filter columns and rows efficiently
       const finalColumnNames = validColumnIndices.map(
         (index) => columnNames[index]
       );
@@ -414,7 +429,7 @@ export class DataService {
           )
         );
 
-      // Create column mapping for flexible header recognition
+      // Optimize column mapping
       const createColumnMapping = (
         headers: string[]
       ): Record<string, string> => {
@@ -423,7 +438,6 @@ export class DataService {
         headers.forEach((header) => {
           const normalized = header.toLowerCase().trim();
 
-          // Map different variations to standard field names
           if (
             normalized.includes("codigo") ||
             normalized.includes("código") ||
@@ -476,21 +490,29 @@ export class DataService {
 
       const columnMapping = createColumnMapping(finalColumnNames);
 
-      console.log(`Available columns: ${finalColumnNames.join(", ")}`);
-      console.log(`Total columns found: ${finalColumnNames.length}`);
-      console.log(`Column mapping: ${JSON.stringify(columnMapping, null, 2)}`);
-      console.log(`Sample of first few data rows:`, finalDataRows.slice(0, 2));
+      this.debugLog(`Available columns: ${finalColumnNames.join(", ")}`);
+      this.debugLog(`Total columns found: ${finalColumnNames.length}`);
+      this.debugLog(
+        `Column mapping: ${JSON.stringify(columnMapping, null, 2)}`
+      );
+      if (this.isDebugMode && finalDataRows.length > 0) {
+        this.debugLog(
+          `Sample of first few data rows:`,
+          finalDataRows.slice(0, 2)
+        );
+      }
 
-      // Check if we have at least codigo or nome mapped
+      // Auto-detect codigo and nome if not found
       if (!columnMapping["codigo"] && !columnMapping["nome"]) {
-        // If no standard mapping found, try to use the first column as codigo and second as nome
         if (finalColumnNames.length >= 1) {
           columnMapping["codigo"] = finalColumnNames[0];
-          console.log(`Using first column '${finalColumnNames[0]}' as codigo`);
+          this.debugLog(
+            `Using first column '${finalColumnNames[0]}' as codigo`
+          );
         }
         if (finalColumnNames.length >= 2) {
           columnMapping["nome"] = finalColumnNames[1];
-          console.log(`Using second column '${finalColumnNames[1]}' as nome`);
+          this.debugLog(`Using second column '${finalColumnNames[1]}' as nome`);
         }
       }
 
@@ -503,14 +525,13 @@ export class DataService {
         );
       }
 
-      // Process each row
+      // Process each row efficiently
       const casas: CasaOracao[] = [];
 
       finalDataRows.forEach((row, index) => {
         try {
           if (!row || row.length === 0) return;
 
-          // Create object from row data using column mapping
           const rowData: Record<string, string> = {};
 
           // Use column mapping to find the correct positions for each field
@@ -518,15 +539,13 @@ export class DataService {
           const tipoImovelIndex = finalColumnNames.indexOf("Tipo de Imóvel");
 
           if (casaOracaoIndex >= 0 && row[casaOracaoIndex]) {
-            // Extract codigo and nome from "Casa de Oração" column
             const casaInfo = row[casaOracaoIndex]?.toString().trim() || "";
 
             if (casaInfo.includes(" - ")) {
               const parts = casaInfo.split(" - ");
               rowData["codigo"] = parts[0]?.trim() || "";
-              rowData["nome"] = parts.slice(1).join(" - ").trim() || ""; // Join in case there are multiple " - "
+              rowData["nome"] = parts.slice(1).join(" - ").trim() || "";
             } else {
-              // If no separator found, use the whole string as nome and leave codigo empty
               rowData["codigo"] = "";
               rowData["nome"] = casaInfo;
             }
@@ -537,50 +556,49 @@ export class DataService {
               row[tipoImovelIndex]?.toString().trim() || "";
           }
 
-          // Log all values to debug (showing total length and all positions)
-          console.log(`Row ${index + 1} total length: ${row.length}`);
-          console.log(
-            `Row ${index + 1} all values:`,
-            row.map((val, idx) => `[${idx}]: ${val}`)
-          );
+          // Optimize column processing - only debug log when in debug mode
+          if (this.isDebugMode) {
+            this.debugLog(`Row ${index + 1} total length: ${row.length}`);
+            this.debugLog(
+              `Row ${index + 1} all values:`,
+              row.map((val, idx) => `[${idx}]: ${val}`)
+            );
+          }
 
-          // Try to map by column headers instead of fixed positions
+          // Map columns efficiently
           finalColumnNames.forEach((columnName, colIndex) => {
             const cellValue = row[colIndex]?.toString().trim() || "";
             if (cellValue && cellValue !== "undefined") {
               const normalizedColumnName = columnName.toLowerCase().trim();
 
-              // Check if this column is "Endereço"
               if (
                 normalizedColumnName.includes("endereço") ||
                 normalizedColumnName.includes("endereco")
               ) {
                 rowData["endereco"] = cellValue;
-                console.log(
+                this.debugLog(
                   `Found endereco in column '${columnName}' at position ${colIndex}: ${cellValue}`
                 );
               }
 
-              // Check if this column is "Status" or "Situação"
               if (
                 normalizedColumnName.includes("status") ||
                 normalizedColumnName.includes("situação") ||
                 normalizedColumnName.includes("situacao")
               ) {
                 rowData["status"] = cellValue;
-                console.log(
+                this.debugLog(
                   `Found status in column '${columnName}' at position ${colIndex}: ${cellValue}`
                 );
               }
             }
           });
 
-          // Fallback: Try to find endereço and status in ANY position if not found in specific positions
+          // Fallback search - only when needed
           if (!rowData["endereco"] || !rowData["status"]) {
             for (let i = 0; i < row.length; i++) {
               const cellValue = row[i]?.toString().trim() || "";
               if (cellValue && cellValue !== "undefined") {
-                // Check if this looks like an address (more comprehensive)
                 if (
                   !rowData["endereco"] &&
                   (cellValue.includes("RUA") ||
@@ -589,14 +607,13 @@ export class DataService {
                     cellValue.includes("ALAMEDA") ||
                     cellValue.includes("PRAÇA") ||
                     cellValue.includes("TRAVESSA") ||
-                    (/\d+/.test(cellValue) && cellValue.includes(","))) // Has numbers and comma (address pattern)
+                    (/\d+/.test(cellValue) && cellValue.includes(",")))
                 ) {
                   rowData["endereco"] = cellValue;
-                  console.log(
+                  this.debugLog(
                     `Found endereco at fallback position ${i}: ${cellValue}`
                   );
                 }
-                // Check if this looks like a status (more comprehensive)
                 if (
                   !rowData["status"] &&
                   (cellValue.toLowerCase().includes("ativo") ||
@@ -606,7 +623,7 @@ export class DataService {
                     cellValue.toLowerCase().includes("inativa"))
                 ) {
                   rowData["status"] = cellValue;
-                  console.log(
+                  this.debugLog(
                     `Found status at fallback position ${i}: ${cellValue}`
                   );
                 }
@@ -614,16 +631,18 @@ export class DataService {
             }
           }
 
-          // Debug: log the actual row data
-          console.log(`Row ${index + 1} raw data:`, row);
-          console.log(`Row ${index + 1} mapped data:`, rowData);
+          // Optimize debugging
+          if (this.isDebugMode) {
+            this.debugLog(`Row ${index + 1} raw data:`, row);
+            this.debugLog(`Row ${index + 1} mapped data:`, rowData);
+          }
 
           // Validate required fields
           const codigo = rowData.codigo?.trim();
           const nome = rowData.nome?.trim();
 
           if (!codigo || !nome) {
-            console.log(
+            this.debugLog(
               `Row ${
                 index + 1
               } ignored: empty code or name (codigo: "${codigo}", nome: "${nome}")`
@@ -631,7 +650,7 @@ export class DataService {
             return;
           }
 
-          console.log(
+          this.debugLog(
             `Processing row ${index + 1}: code=${codigo}, name=${nome}`
           );
 
@@ -865,7 +884,7 @@ export class DataService {
         throw new Error("Excel file is empty or invalid");
       }
 
-      console.log("Raw Excel data:", data);
+      this.debugLog("Raw Excel data:", data);
 
       const gestaoVistaData: GestaoVistaData[] = [];
       const casasProcessadas = new Map<string, GestaoVistaData>();
@@ -876,7 +895,7 @@ export class DataService {
         const row = data[i] as unknown[];
 
         if (!row || row.length === 0) {
-          console.log(`Row ${i + 1} is empty, skipping`);
+          this.debugLog(`Row ${i + 1} is empty, skipping`);
           continue;
         }
 
@@ -884,14 +903,14 @@ export class DataService {
           // Extract codigo da casa from column 4 (index 3)
           const codigoCompleto = row[3]?.toString().trim();
           if (!codigoCompleto) {
-            console.log(`Row ${i + 1}: No code found in column 4, skipping`);
+            this.debugLog(`Row ${i + 1}: No code found in column 4, skipping`);
             continue;
           }
 
           // Extract the code part (before the " - ")
           const codigo = codigoCompleto.split(" - ")[0]?.trim();
           if (!codigo) {
-            console.log(
+            this.debugLog(
               `Row ${
                 i + 1
               }: Could not extract code from "${codigoCompleto}", skipping`
@@ -902,7 +921,7 @@ export class DataService {
           // Extract document info from column 8 (index 7)
           const documentoCompleto = row[7]?.toString().trim();
           if (!documentoCompleto) {
-            console.log(
+            this.debugLog(
               `Row ${i + 1}: No document found in column 8, skipping`
             );
             continue;
@@ -916,7 +935,7 @@ export class DataService {
             .trim();
 
           if (!codigoDocumento || !nomeDocumento) {
-            console.log(
+            this.debugLog(
               `Row ${
                 i + 1
               }: Could not parse document "${documentoCompleto}", skipping`
@@ -965,7 +984,7 @@ export class DataService {
 
           casaData.documentos.push(documento);
 
-          console.log(
+          this.debugLog(
             `Processed document for casa ${codigo}: ${nomeDocumento}`
           );
         } catch (error) {
@@ -983,11 +1002,6 @@ export class DataService {
       console.log(
         `Total casas with documents imported: ${gestaoVistaData.length}`
       );
-
-      // Log summary
-      gestaoVistaData.forEach((casa) => {
-        console.log(`Casa ${casa.codigo}: ${casa.documentos.length} documents`);
-      });
 
       return gestaoVistaData;
     } catch (error) {
