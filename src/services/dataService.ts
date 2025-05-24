@@ -4,7 +4,6 @@ import {
   GestaoData,
   DocumentoDetalhado,
   GestaoVistaData,
-  DOCUMENTOS_GESTAO_VISTA_LIST,
   findDocumentoByCodigo,
 } from "../types/churchs";
 import { normalizarNomeDocumento } from "../utils/constants";
@@ -24,7 +23,7 @@ export class DataService {
     this.initializeDataFiles();
   }
 
-  private debugLog(...args: any[]): void {
+  private debugLog(...args: unknown[]): void {
     if (this.isDebugMode) {
       console.log(...args);
     }
@@ -252,6 +251,7 @@ export class DataService {
             try {
               column.normalized = normalizarNomeDocumento(headerStr);
             } catch (error) {
+              console.log("Error normalizing document name:", error);
               column.normalized = headerStr
                 .toLowerCase()
                 .replace(/[^a-z0-9]/g, "_");
@@ -793,18 +793,25 @@ export class DataService {
         const data = localStorage.getItem("gestaoVista");
         // Parse dates from JSON
         const parsed = data ? JSON.parse(data) : [];
-        return parsed.map((item: any) => ({
-          ...item,
-          documentos: item.documentos.map((doc: any) => ({
-            ...doc,
-            dataEmissao: doc.dataEmissao
-              ? new Date(doc.dataEmissao)
-              : undefined,
-            dataValidade: doc.dataValidade
-              ? new Date(doc.dataValidade)
-              : undefined,
-          })),
-        }));
+        return parsed.map((item: unknown) => {
+          const typedItem = item as GestaoVistaData & {
+            documentos: Array<Record<string, unknown>>;
+          };
+          return {
+            ...typedItem,
+            documentos: typedItem.documentos.map((doc) => ({
+              ...doc,
+              dataEmissao:
+                typeof doc.dataEmissao === "string"
+                  ? new Date(doc.dataEmissao)
+                  : undefined,
+              dataValidade:
+                typeof doc.dataValidade === "string"
+                  ? new Date(doc.dataValidade)
+                  : undefined,
+            })) as DocumentoDetalhado[],
+          };
+        });
       }
       return [];
     } catch (error) {

@@ -1,8 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { DataService } from "../services/dataService";
-import { GestaoVistaData, GestaoData, CasaOracao } from "../types/churchs";
+import {
+  GestaoVistaData,
+  GestaoData,
+  CasaOracao,
+  DocumentoDetalhado,
+} from "../types/churchs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +33,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FileText,
   Calendar,
@@ -74,10 +77,17 @@ export default function GestaoConsolidada({
   const dataService = new DataService();
   const documentosService = new DocumentosFaltantesService();
 
+  const loadData = useCallback(() => {
+    const gestaoVistaData = dataService.loadGestaoVista();
+    const gestaoData = dataService.loadGestao();
+    setGestaoVistaData(gestaoVistaData);
+    setGestaoData(gestaoData);
+  }, [dataService]);
+
   // Load data on component mount
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   // Filter data based on search term (código or nome)
   useEffect(() => {
@@ -100,13 +110,6 @@ export default function GestaoConsolidada({
       setFilteredData(filtered);
     }
   }, [searchTerm, gestaoVistaData, casas]);
-
-  const loadData = () => {
-    const gestaoVistaData = dataService.loadGestaoVista();
-    const gestaoData = dataService.loadGestao();
-    setGestaoVistaData(gestaoVistaData);
-    setGestaoData(gestaoData);
-  };
 
   const handleImportSuccess = (data: GestaoVistaData[]) => {
     loadData();
@@ -184,7 +187,7 @@ export default function GestaoConsolidada({
   const getValidDocuments = () => {
     return gestaoVistaData.reduce((total, casa) => {
       // Group documents by type and count only the most current valid ones
-      const documentsByType = new Map<string, any[]>();
+      const documentsByType = new Map<string, DocumentoDetalhado[]>();
 
       casa.documentos.forEach((doc) => {
         const normalizedName = doc.nomeDocumento; // Using original name for now
@@ -202,7 +205,7 @@ export default function GestaoConsolidada({
         );
         if (validDocs.length > 0) {
           // Sort by validity date (most distant future first)
-          const sortedValid = validDocs.sort((a, b) => {
+          validDocs.sort((a, b) => {
             if (a.dataValidade && b.dataValidade) {
               return b.dataValidade.getTime() - a.dataValidade.getTime();
             }
@@ -219,7 +222,7 @@ export default function GestaoConsolidada({
   const getDocumentsExpired = () => {
     return gestaoVistaData.reduce((total, casa) => {
       // Group documents by type and check only the most current ones
-      const documentsByType = new Map<string, any[]>();
+      const documentsByType = new Map<string, DocumentoDetalhado[]>();
 
       casa.documentos.forEach((doc) => {
         const normalizedName = doc.nomeDocumento;
@@ -272,7 +275,7 @@ export default function GestaoConsolidada({
   const getDocumentsExpiringSoon = () => {
     return gestaoVistaData.reduce((total, casa) => {
       // Group documents by type and check only the most current ones
-      const documentsByType = new Map<string, any[]>();
+      const documentsByType = new Map<string, DocumentoDetalhado[]>();
 
       casa.documentos.forEach((doc) => {
         const normalizedName = doc.nomeDocumento;
@@ -742,7 +745,10 @@ export default function GestaoConsolidada({
                 <TableBody>
                   {filteredData.map((casa) => {
                     // Count only current documents that are expired (same logic as metrics)
-                    const documentsByType = new Map<string, any[]>();
+                    const documentsByType = new Map<
+                      string,
+                      DocumentoDetalhado[]
+                    >();
 
                     casa.documentos.forEach((doc) => {
                       const normalizedName = doc.nomeDocumento;
@@ -1485,7 +1491,10 @@ export default function GestaoConsolidada({
                     <div className="text-2xl font-bold text-yellow-600">
                       {(() => {
                         // Count only current documents that are expiring soon
-                        const documentsByType = new Map<string, any[]>();
+                        const documentsByType = new Map<
+                          string,
+                          DocumentoDetalhado[]
+                        >();
 
                         selectedCasa.documentos.forEach((doc) => {
                           if (!documentsByType.has(doc.nomeDocumento)) {
@@ -1531,7 +1540,10 @@ export default function GestaoConsolidada({
                     <div className="text-2xl font-bold text-red-600">
                       {(() => {
                         // Count only current documents that are expired
-                        const documentsByType = new Map<string, any[]>();
+                        const documentsByType = new Map<
+                          string,
+                          DocumentoDetalhado[]
+                        >();
 
                         selectedCasa.documentos.forEach((doc) => {
                           if (!documentsByType.has(doc.nomeDocumento)) {
@@ -1602,7 +1614,10 @@ export default function GestaoConsolidada({
                   <CardDescription>
                     {(() => {
                       const totalDocs = selectedCasa.documentos.length;
-                      const documentsByType = new Map<string, any[]>();
+                      const documentsByType = new Map<
+                        string,
+                        DocumentoDetalhado[]
+                      >();
 
                       selectedCasa.documentos.forEach((doc) => {
                         if (!documentsByType.has(doc.nomeDocumento)) {
@@ -1613,7 +1628,7 @@ export default function GestaoConsolidada({
 
                       const duplicateTypes = Array.from(
                         documentsByType.entries()
-                      ).filter(([_, docs]) => docs.length > 1).length;
+                      ).filter(([, docs]) => docs.length > 1).length;
 
                       return duplicateTypes > 0
                         ? `${totalDocs} documentos (${duplicateTypes} tipos com múltiplas versões)`
@@ -1635,7 +1650,10 @@ export default function GestaoConsolidada({
                     <TableBody>
                       {(() => {
                         // Group documents by type to identify current ones
-                        const documentsByType = new Map<string, any[]>();
+                        const documentsByType = new Map<
+                          string,
+                          DocumentoDetalhado[]
+                        >();
 
                         selectedCasa.documentos.forEach((doc) => {
                           if (!documentsByType.has(doc.nomeDocumento)) {
