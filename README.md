@@ -106,7 +106,7 @@ src/
 │   ├── dataDisplay.tsx          # Componente principal de visualização
 │   ├── gestaoConsolidada.tsx    # Sistema unificado de gestão
 │   ├── casasImport.tsx          # Importação de casas de oração
-│   ├── gestaoVistaImport.tsx    # Importação de dados avançados
+│   ├── documentImport.tsx       # Importação unificada de documentos com histórico
 │   ├── dataExportImport.tsx     # Sistema de backup
 │   ├── chartDisplay.tsx         # Gráficos e visualizações
 │   ├── documentosFaltantesAnalysis.tsx # Análise de documentos
@@ -208,11 +208,10 @@ npm run start
 ### 2. Gestão de Documentos (Sistema Unificado)
 
 1. **Acesse a aba "Gestão"**
-2. **Escolha o modo de visualização**:
-   - **Modo Cards**: Visualização avançada com controle de datas
-   - **Modo Tabela**: Visualização tradicional com funcionalidades de exportação
-3. **Importe dados detalhados** (Modo Cards):
-   - Clique em "Importar Gestão a Vista"
+2. **Importe documentos diretamente**:
+   - Clique em "Importar Documentos"
+   - Arraste e solte ou clique para selecionar o arquivo Excel
+   - O sistema mostra o histórico das últimas importações
    - Selecione arquivo Excel no formato específico:
      - Cabeçalho na linha 11
      - Primeiro dado na linha 13
@@ -221,12 +220,19 @@ npm run start
      - Coluna 8: Documentos (código + descrição)
      - Coluna 14: Data de emissão
      - Coluna 16: Data de validade
-4. **Monitore documentos**:
+3. **Escolha o modo de visualização** (após importar):
+   - **Modo Cards**: Visualização avançada com controle de datas
+   - **Modo Tabela**: Visualização tradicional com funcionalidades de exportação
+4. **Acompanhe o histórico de importações**:
+   - Veja as últimas 20 importações realizadas
+   - Visualize data/hora, arquivo, quantidade de casas e documentos
+   - Status de sucesso ou erro de cada importação
+5. **Monitore documentos**:
    - Visualize estatísticas de documentos vencidos e a vencer
    - Acompanhe status visual por casa de oração
    - Identifique rapidamente problemas de documentação
    - **Consolidação automática**: Documentos similares são agrupados (ex: AVCB + CLCB = Bombeiros)
-5. **Use o Modo Tabela para exportação**:
+6. **Use o Modo Tabela para exportação**:
    - Os dados tradicionais são gerados automaticamente após a importação
    - Ative o "Modo Export" para visualizar tabela completa
    - Configure exceções e exporte para PDF

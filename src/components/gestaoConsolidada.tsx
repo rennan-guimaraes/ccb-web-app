@@ -47,8 +47,9 @@ import {
   Loader2,
   Grid3X3,
   BarChart3,
+  Upload,
 } from "lucide-react";
-import GestaoVistaImport from "./gestaoVistaImport";
+import DocumentImport from "./documentImport";
 import { isDocumentoObrigatorio } from "../utils/constants";
 import { DocumentosFaltantesService } from "../services/missingDocumentsService";
 import { jsPDF } from "jspdf";
@@ -69,7 +70,7 @@ export default function GestaoConsolidada({
     null
   );
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "import">("cards");
   const [exportMode, setExportMode] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportUseExemptions, setExportUseExemptions] = useState(false);
@@ -573,7 +574,7 @@ export default function GestaoConsolidada({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-purple-600" />
+            <FileText className="h-5 w-5 text-emerald-600" />
             Gestão de Documentos
           </CardTitle>
           <CardDescription>
@@ -583,7 +584,15 @@ export default function GestaoConsolidada({
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <div className="flex gap-2">
-              <GestaoVistaImport onImportSuccess={handleImportSuccess} />
+              <Button
+                variant={viewMode === "import" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("import")}
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Importar Documentos
+              </Button>
               {gestaoVistaData.length > 0 && gestaoData.length === 0 && (
                 <Button
                   variant="outline"
@@ -606,64 +615,68 @@ export default function GestaoConsolidada({
                 Limpar
               </Button>
             </div>
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por código ou nome da casa..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* View Mode Toggle */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Label htmlFor="view-mode">Modo de Visualização:</Label>
-              <div className="flex gap-2">
-                <Button
-                  variant={viewMode === "cards" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setViewMode("cards")}
-                  className="gap-2"
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                  Cards
-                </Button>
-                <Button
-                  variant={viewMode === "table" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setViewMode("table")}
-                  className="gap-2"
-                  disabled={gestaoData.length === 0}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Tabela
-                </Button>
-              </div>
-            </div>
-
-            {viewMode === "table" && gestaoData.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={exportMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setExportMode(!exportMode)}
-                  className="gap-2"
-                >
-                  <FileDown className="h-4 w-4" />
-                  {exportMode ? "Sair do Modo Export" : "Modo Export"}
-                </Button>
+            {viewMode !== "import" && (
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por código ou nome da casa..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {/* View Mode Toggle - Only show when not in import mode */}
+      {viewMode !== "import" && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Label htmlFor="view-mode">Modo de Visualização:</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewMode === "cards" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("cards")}
+                    className="gap-2"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                    Cards
+                  </Button>
+                  <Button
+                    variant={viewMode === "table" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("table")}
+                    className="gap-2"
+                    disabled={gestaoData.length === 0}
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Tabela
+                  </Button>
+                </div>
+              </div>
+
+              {viewMode === "table" && gestaoData.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={exportMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setExportMode(!exportMode)}
+                    className="gap-2"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    {exportMode ? "Sair do Modo Export" : "Modo Export"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Statistics - Only show if gestaoVistaData has data */}
       {gestaoVistaData.length > 0 && viewMode === "cards" && (
@@ -720,7 +733,13 @@ export default function GestaoConsolidada({
       )}
 
       {/* Content based on view mode */}
-      {viewMode === "cards" ? (
+      {viewMode === "import" ? (
+        // Import Mode
+        <DocumentImport 
+          onImportSuccess={handleImportSuccess}
+          onImportError={(error) => console.error("Import error:", error)}
+        />
+      ) : viewMode === "cards" ? (
         // Cards View (Gestão a Vista)
         filteredData.length > 0 ? (
           <Card>
@@ -868,9 +887,12 @@ export default function GestaoConsolidada({
                 Nenhum dado encontrado
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Importe um arquivo Excel do gestão a vista para começar
+                Importe documentos para começar a usar o sistema
               </p>
-              <GestaoVistaImport onImportSuccess={handleImportSuccess} />
+              <Button onClick={() => setViewMode("import")} className="gap-2">
+                <Upload className="h-4 w-4" />
+                Ir para Importação
+              </Button>
             </CardContent>
           </Card>
         ) : (

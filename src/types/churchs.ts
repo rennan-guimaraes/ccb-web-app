@@ -65,6 +65,18 @@ export interface GestaoVistaData {
   documentos: DocumentoDetalhado[]; // Lista de documentos da casa
 }
 
+// Interface para histórico de importações
+export interface ImportHistory {
+  id: string;
+  timestamp: Date;
+  fileName: string;
+  type: "documentos" | "casas" | "backup";
+  totalItems: number;
+  totalDocumentos?: number;
+  status: "success" | "error";
+  message?: string;
+}
+
 // Lista dos documentos do gestão a vista com códigos e descrições
 export const DOCUMENTOS_GESTAO_VISTA_LIST = [
   { codigo: "1.1", nome: "ESCRITURA DEFINITIVA - COMPRA E VENDA / PERMUTA" },

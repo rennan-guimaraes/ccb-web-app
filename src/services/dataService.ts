@@ -4,6 +4,7 @@ import {
   GestaoData,
   DocumentoDetalhado,
   GestaoVistaData,
+  ImportHistory,
   findDocumentoByCodigo,
 } from "../types/churchs";
 import { normalizarNomeDocumento } from "../utils/constants";
@@ -38,6 +39,79 @@ export class DataService {
       if (!localStorage.getItem("casas")) {
         localStorage.setItem("casas", JSON.stringify([]));
       }
+      if (!localStorage.getItem("importHistory")) {
+        localStorage.setItem("importHistory", JSON.stringify([]));
+      }
+    }
+  }
+
+  /**
+   * Loads import history from storage
+   */
+  loadImportHistory(): ImportHistory[] {
+    try {
+      if (typeof window !== "undefined") {
+        const data = localStorage.getItem("importHistory");
+        const parsed = data ? JSON.parse(data) : [];
+        // Parse dates from JSON
+        return parsed.map((item: ImportHistory) => ({
+          ...item,
+          timestamp: new Date(item.timestamp),
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error("Error loading import history:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Saves import history to storage
+   */
+  private saveImportHistory(history: ImportHistory[]): boolean {
+    try {
+      if (typeof window !== "undefined") {
+        // Keep only the last 20 imports
+        const limitedHistory = history.slice(0, 20);
+        localStorage.setItem("importHistory", JSON.stringify(limitedHistory));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error saving import history:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Adds a new entry to import history
+   */
+  addImportHistory(entry: Omit<ImportHistory, "id" | "timestamp">): ImportHistory {
+    const history = this.loadImportHistory();
+    const newEntry: ImportHistory = {
+      ...entry,
+      id: crypto.randomUUID(),
+      timestamp: new Date(),
+    };
+    history.unshift(newEntry);
+    this.saveImportHistory(history);
+    return newEntry;
+  }
+
+  /**
+   * Clears import history
+   */
+  clearImportHistory(): boolean {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("importHistory", JSON.stringify([]));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error clearing import history:", error);
+      return false;
     }
   }
 
